@@ -46,7 +46,7 @@
                 </a>
 
                 <!-- History -->
-                <a href="#" class="flex items-center px-4 py-3 rounded-xl transition-colors group hover:bg-white/20">
+                <a href="{{ route('history') }}" class="flex items-center px-4 py-3 rounded-xl transition-colors group {{ request()->routeIs('history') ? 'bg-white shadow-sm' : 'hover:bg-white/20' }}">
                     <div class="w-8 h-8 flex items-center justify-center mr-4">
                         <!-- History Icon -->
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-8 h-8 text-black">
@@ -57,7 +57,7 @@
                 </a>
 
                 <!-- Management User -->
-                <a href="#" class="flex items-center px-4 py-3 rounded-xl transition-colors group hover:bg-white/20">
+                <a href="{{ route('management-user') }}" class="flex items-center px-4 py-3 rounded-xl transition-colors group {{ request()->routeIs('management-user') ? 'bg-white shadow-sm' : 'hover:bg-white/20' }}">
                     <div class="w-8 h-8 flex items-center justify-center mr-4">
                         <!-- User Group Icon -->
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-8 h-8 text-black">
@@ -68,7 +68,7 @@
                 </a>
 
                 <!-- Integrasi Sistem -->
-                <a href="{{ route('integrasi-sistem') }}" class="flex items-center px-4 py-3 rounded-xl transition-colors group {{ request()->routeIs('integrasi-sistem') ? 'bg-white shadow-sm' : 'hover:bg-white/20' }}">
+                <a href="{{ route('integrasi-sistem.index') }}" class="flex items-center px-4 py-3 rounded-xl transition-colors group {{ request()->routeIs('integrasi-sistem*') ? 'bg-white shadow-sm' : 'hover:bg-white/20' }}">
                     <div class="w-8 h-8 flex items-center justify-center mr-4">
                         <!-- System/Monitor Icon -->
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-8 h-8 text-black">
@@ -94,11 +94,24 @@
 
                 <!-- Breadcrumbs -->
                 <div class="flex items-center text-[18px] lg:text-[24px] font-bold text-black overflow-hidden whitespace-nowrap">
-                    <span>Dashboard</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" class="w-5 h-5 lg:w-6 lg:h-6 mx-2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-                    </svg>
-                    <span class="truncate">Integrasi Sistem</span>
+                    <a href="{{ route('dashboard') }}" class="hover:underline">Dashboard</a>
+
+                    @if(request()->routeIs('integrasi-sistem*'))
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" class="w-5 h-5 lg:w-6 lg:h-6 mx-2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                        </svg>
+                        <span class="truncate">Integrasi Sistem</span>
+                    @elseif(request()->routeIs('management-user'))
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" class="w-5 h-5 lg:w-6 lg:h-6 mx-2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                        </svg>
+                        <span class="truncate">Management User</span>
+                    @elseif(request()->routeIs('history'))
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" class="w-5 h-5 lg:w-6 lg:h-6 mx-2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                        </svg>
+                        <span class="truncate">History</span>
+                    @endif
                 </div>
 
                 <!-- Right Actions -->

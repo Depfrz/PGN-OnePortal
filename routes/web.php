@@ -12,8 +12,20 @@ Route::get('/dashboard', function () {
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::get('/integrasi-sistem', function () {
-    return view('integrasi-sistem');
-})->middleware(['auth', 'verified'])->name('integrasi-sistem');
+    return view('integrasi-sistem.index');
+})->middleware(['auth', 'verified'])->name('integrasi-sistem.index');
+
+Route::get('/integrasi-sistem/tambah', function () {
+    return view('integrasi-sistem.create');
+})->middleware(['auth', 'verified'])->name('integrasi-sistem.create');
+
+Route::get('/management-user', function () {
+    return view('management-user');
+})->middleware(['auth', 'verified'])->name('management-user');
+
+Route::get('/history', function () {
+    return view('history');
+})->middleware(['auth', 'verified'])->name('history');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
