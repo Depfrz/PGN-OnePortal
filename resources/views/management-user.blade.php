@@ -8,14 +8,28 @@
         editAccessModal: false,
         selectedUser: null,
         selectedAccess: [],
-        users: [
-            { id: 1, name: 'Falih', email: 'falih@gmail.com', password: 'Falih123', instansi: 'Telkom', jabatan: 'Mahasiswa', role: 'Manager', status: 'Active', hak_akses: 'Dashboard' }
-        ],
-        availableRoles: ['Admin', 'Supervisor', 'SuperUser', 'User'],
-        availableAccess: ['Dashboard', 'Management User', 'Laporan', 'Pengaturan', 'Audit Log'],
+        
+        // Form Data
+        newUser: {
+            name: '',
+            email: '',
+            password: '',
+            password_confirmation: '',
+            role: 'User',
+            hak_akses: []
+        },
+        newPassword: '',
+        newPasswordConfirmation: '',
+
+        // Data from Backend
+        users: {{ Js::from($users) }},
+        availableRoles: {{ Js::from($availableRoles) }},
+        availableAccess: {{ Js::from($availableAccess) }},
         
         openResetPassword(user) {
             this.selectedUser = user;
+            this.newPassword = '';
+            this.newPasswordConfirmation = '';
             this.resetPasswordModal = true;
         },
         
@@ -31,28 +45,144 @@
 
         openEditAccess(user) {
             this.selectedUser = JSON.parse(JSON.stringify(user)); // Clone object
-            // Initialize selectedAccess based on user's hak_akses (assumed comma-separated or single string)
-            this.selectedAccess = this.selectedUser.hak_akses ? this.selectedUser.hak_akses.split(',').map(item => item.trim()) : [];
+            this.selectedAccess = [...this.selectedUser.hak_akses];
             this.editAccessModal = true;
         },
 
-        saveRole() {
-            // Find user index and update
-            const index = this.users.findIndex(u => u.id === this.selectedUser.id);
-            if (index !== -1) {
-                this.users[index].role = this.selectedUser.role;
+        async saveUser() {
+            try {
+                const response = await fetch('{{ route('management-user.store') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
+                    },
+                    body: JSON.stringify(this.newUser)
+                });
+                
+                if (response.ok) {
+                    alert('User berhasil ditambahkan');
+                    window.location.reload();
+                } else {
+                    const data = await response.json();
+                    alert('Gagal menambahkan user: ' + (data.message || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error(error);
+                alert('Terjadi kesalahan sistem');
             }
-            this.editRoleModal = false;
         },
 
-        saveAccess() {
-            // Find user index and update
-            const index = this.users.findIndex(u => u.id === this.selectedUser.id);
-            if (index !== -1) {
-                // Join selected array back to string
-                this.users[index].hak_akses = this.selectedAccess.join(', ');
+        async saveRole() {
+            try {
+                const response = await fetch(`/management-user/${this.selectedUser.id}/role`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
+                    },
+                    body: JSON.stringify({ role: this.selectedUser.role })
+                });
+
+                if (response.ok) {
+                    // Update local data
+                    const index = this.users.findIndex(u => u.id === this.selectedUser.id);
+                    if (index !== -1) {
+                        this.users[index].role = this.selectedUser.role;
+                    }
+                    this.editRoleModal = false;
+                    alert('Role berhasil diperbarui');
+                } else {
+                    alert('Gagal memperbarui role');
+                }
+            } catch (error) {
+                console.error(error);
+                alert('Terjadi kesalahan sistem');
             }
-            this.editAccessModal = false;
+        },
+
+        async saveAccess() {
+            try {
+                const response = await fetch(`/management-user/${this.selectedUser.id}/access`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
+                    },
+                    body: JSON.stringify({ hak_akses: this.selectedAccess })
+                });
+
+                if (response.ok) {
+                    // Update local data
+                    const index = this.users.findIndex(u => u.id === this.selectedUser.id);
+                    if (index !== -1) {
+                        this.users[index].hak_akses = [...this.selectedAccess];
+                    }
+                    this.editAccessModal = false;
+                    alert('Hak akses berhasil diperbarui');
+                } else {
+                    alert('Gagal memperbarui hak akses');
+                }
+            } catch (error) {
+                console.error(error);
+                alert('Terjadi kesalahan sistem');
+            }
+        },
+
+        async updatePassword() {
+            if (this.newPassword !== this.newPasswordConfirmation) {
+                alert('Password konfirmasi tidak cocok');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/management-user/${this.selectedUser.id}/password`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
+                    },
+                    body: JSON.stringify({ 
+                        password: this.newPassword,
+                        password_confirmation: this.newPasswordConfirmation
+                    })
+                });
+
+                if (response.ok) {
+                    this.resetPasswordModal = false;
+                    alert('Password berhasil direset');
+                } else {
+                    const data = await response.json();
+                    alert('Gagal reset password: ' + (data.message || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error(error);
+                alert('Terjadi kesalahan sistem');
+            }
+        },
+
+        async deleteUser() {
+            try {
+                const response = await fetch(`/management-user/${this.selectedUser.id}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
+                    }
+                });
+
+                if (response.ok) {
+                    this.users = this.users.filter(u => u.id !== this.selectedUser.id);
+                    this.deleteUserModal = false;
+                    alert('User berhasil dihapus');
+                } else {
+                    const data = await response.json();
+                    alert('Gagal menghapus user: ' + (data.message || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error(error);
+                alert('Terjadi kesalahan sistem');
+            }
         }
     }" class="bg-white rounded-xl shadow-sm p-6 lg:p-8 min-h-[800px] flex flex-col">
         
@@ -75,7 +205,7 @@
         <div>
             <div class="flex items-center justify-between mb-6">
                 <h2 class="text-xl font-bold text-gray-800">Manajemen User</h2>
-                <button @click="addUserModal = true" style="background-color: #2563eb; color: white;" class="!bg-blue-600 !text-white font-medium text-sm py-2.5 px-6 rounded-lg hover:!bg-blue-700 transition-all shadow-md hover:shadow-lg flex items-center border border-transparent">
+                <button @click="addUserModal = true" style="background-color: #2563eb !important; color: white !important;" class="!bg-blue-600 !text-white font-medium text-sm py-2.5 px-6 rounded-lg hover:!bg-blue-700 transition-all shadow-md hover:shadow-lg flex items-center border border-transparent">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
                     </svg>
@@ -89,7 +219,6 @@
                     <thead>
                         <tr class="text-left">
                             <th class="pb-2 font-semibold text-xs text-gray-500 uppercase tracking-wider pl-4">Nama / Email</th>
-                            <th class="pb-2 font-semibold text-xs text-gray-500 uppercase tracking-wider">Password</th>
                             <th class="pb-2 font-semibold text-xs text-gray-500 uppercase tracking-wider">Instansi</th>
                             <th class="pb-2 font-semibold text-xs text-gray-500 uppercase tracking-wider">Jabatan</th>
                             <th class="pb-2 font-semibold text-xs text-gray-500 uppercase tracking-wider">Role</th>
@@ -99,14 +228,11 @@
                         </tr>
                     </thead>
                     <tbody class="space-y-4">
-                        <template x-for="user in users" :key="user.id">
+                        <template x-for="user in users.filter(u => u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase()))" :key="user.id">
                             <tr class="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 group">
                                 <td class="p-4 rounded-l-lg border-y border-l border-gray-200 group-hover:border-blue-300 transition-colors">
                                     <div class="font-bold text-sm text-gray-900" x-text="user.name"></div>
                                     <div class="text-xs text-gray-500" x-text="user.email"></div>
-                                </td>
-                                <td class="p-4 border-y border-gray-200 group-hover:border-blue-300 transition-colors">
-                                    <div class="text-sm font-mono text-gray-600 bg-gray-100 px-2 py-1 rounded inline-block" x-text="user.password"></div>
                                 </td>
                                 <td class="p-4 text-sm text-gray-700 border-y border-gray-200 group-hover:border-blue-300 transition-colors" x-text="user.instansi"></td>
                                 <td class="p-4 text-sm text-gray-700 border-y border-gray-200 group-hover:border-blue-300 transition-colors" x-text="user.jabatan"></td>
@@ -114,7 +240,7 @@
                                     <div class="flex items-center">
                                         <span class="text-sm font-medium text-gray-700 mr-2" x-text="user.role"></span>
                                         <button @click="openEditRole(user)" class="text-blue-600 hover:text-blue-800 transition-colors p-1 rounded hover:bg-blue-50">
-                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 text-blue-600">
                                                 <path d="M21.731 2.269a2.625 2.625 0 00-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 000-3.712zM19.513 8.199l-3.712-3.712-12.15 12.15a5.25 5.25 0 00-1.32 2.214l-.8 2.685a.75.75 0 00.933.933l2.685-.8a5.25 5.25 0 002.214-1.32L19.513 8.2z" />
                                             </svg>
                                         </button>
@@ -124,10 +250,10 @@
                                     <span style="background-color: #dcfce7; color: #166534; border: 1px solid #bbf7d0;" class="inline-flex items-center px-4 py-1.5 rounded-full text-sm font-semibold !bg-green-100 !text-green-800 !border-green-200 shadow-sm" x-text="user.status"></span>
                                 </td>
                                 <td class="p-4 text-center border-y border-gray-200 group-hover:border-blue-300 transition-colors">
-                                    <div @click="openEditAccess(user)" class="flex items-center justify-center space-x-2 cursor-pointer hover:bg-gray-50 p-1 rounded-lg transition-colors group/access">
-                                        <span class="text-sm font-medium text-gray-700 group-hover/access:text-blue-600" x-text="user.hak_akses"></span>
-                                        <div class="w-6 h-6 bg-blue-50 border border-blue-200 rounded flex items-center justify-center group-hover/access:bg-blue-100 group-hover/access:border-blue-300 transition-colors">
-                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3 h-3 text-blue-600">
+                                    <div @click="openEditAccess(user)" class="flex items-center justify-center space-x-2 cursor-pointer bg-blue-50 hover:bg-blue-100 p-2 rounded-lg transition-colors group/access border border-blue-100">
+                                        <span class="text-sm font-medium text-blue-700" x-text="user.hak_akses.length ? user.hak_akses.join(', ') : 'Pilih Akses'"></span>
+                                        <div class="w-6 h-6 bg-blue-200 rounded flex items-center justify-center">
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 text-blue-700">
                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
                                             </svg>
                                         </div>
@@ -170,19 +296,31 @@
                 <div class="space-y-5">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Nama Lengkap</label>
-                        <input type="text" placeholder="Masukkan nama lengkap" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none">
+                        <input x-model="newUser.name" type="text" placeholder="Masukkan nama lengkap" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
-                        <input type="email" placeholder="contoh@email.com" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none">
+                        <input x-model="newUser.email" type="email" placeholder="contoh@email.com" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                        <input type="password" placeholder="Minimal 8 karakter" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none">
+                        <input x-model="newUser.password" type="password" placeholder="Minimal 8 karakter" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Konfirmasi Password</label>
+                        <input x-model="newUser.password_confirmation" type="password" placeholder="Ulangi Password" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none">
+                    </div>
+                    <div>
+                         <label class="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                         <select x-model="newUser.role" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none">
+                             <template x-for="role in availableRoles" :key="role">
+                                 <option :value="role" x-text="role"></option>
+                             </template>
+                         </select>
                     </div>
                     <div class="flex justify-end space-x-3 mt-8">
                         <button @click="addUserModal = false" class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors">Batal</button>
-                        <button @click="addUserModal = false" style="background-color: #2563eb !important; color: white !important;" class="px-5 py-2.5 !bg-blue-600 !text-white rounded-lg hover:!bg-blue-700 font-medium shadow-md hover:shadow-lg transition-all">Simpan User</button>
+                        <button @click="saveUser()" style="background-color: #2563eb !important; color: white !important;" class="px-5 py-2.5 !bg-blue-600 !text-white rounded-lg hover:!bg-blue-700 font-medium shadow-md hover:shadow-lg transition-all">Simpan User</button>
                     </div>
                 </div>
             </div>
@@ -202,11 +340,15 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Password Baru</label>
-                        <input type="password" placeholder="Masukkan password baru" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none">
+                        <input x-model="newPassword" type="password" placeholder="Masukkan password baru" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Konfirmasi Password Baru</label>
+                        <input x-model="newPasswordConfirmation" type="password" placeholder="Ulangi password baru" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none">
                     </div>
                     <div class="flex justify-end space-x-3 mt-8">
                         <button @click="resetPasswordModal = false" class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors">Batal</button>
-                        <button @click="resetPasswordModal = false" style="background-color: #2563eb !important; color: white !important;" class="px-5 py-2.5 !bg-blue-600 !text-white rounded-lg hover:!bg-blue-700 font-medium shadow-md hover:shadow-lg transition-all">Update Password</button>
+                        <button @click="updatePassword()" style="background-color: #2563eb !important; color: white !important;" class="px-5 py-2.5 !bg-blue-600 !text-white rounded-lg hover:!bg-blue-700 font-medium shadow-md hover:shadow-lg transition-all">Update Password</button>
                     </div>
                 </div>
             </div>
@@ -237,7 +379,7 @@
                     </div>
                     <div class="flex justify-end space-x-3 mt-6">
                         <button @click="deleteUserModal = false" class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors">Batal</button>
-                        <button @click="deleteUserModal = false" class="px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium shadow-md hover:shadow-lg transition-all">Ya, Hapus User</button>
+                        <button @click="deleteUser()" class="px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium shadow-md hover:shadow-lg transition-all">Ya, Hapus User</button>
                     </div>
                 </div>
             </div>
@@ -257,17 +399,17 @@
                 <div class="space-y-4">
                     <p class="text-sm text-gray-600 mb-2">Pilih role untuk user <span class="font-semibold" x-text="selectedUser?.name"></span>:</p>
                     <div class="grid grid-cols-2 gap-4">
-                <template x-for="role in availableRoles" :key="role">
-                    <label class="flex items-center p-4 border border-gray-200 rounded-none shadow-sm cursor-pointer hover:bg-blue-50 hover:border-blue-200 transition-colors gap-4">
-                        <input type="radio" name="role" :value="role" x-model="selectedUser.role" class="w-5 h-5 text-blue-600 border-gray-300 focus:ring-blue-500">
-                        <span class="text-base font-medium text-gray-700" x-text="role"></span>
-                    </label>
-                </template>
-            </div>
-            <div class="flex justify-end space-x-3 mt-6">
-                <button @click="editRoleModal = false" class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors">Batal</button>
-                <button @click="saveRole()" style="background-color: #2563eb !important; color: white !important;" class="px-5 py-2.5 !bg-blue-600 !text-white rounded-lg hover:!bg-blue-700 font-medium shadow-md hover:shadow-lg transition-all">Simpan</button>
-            </div>
+                        <template x-for="role in availableRoles" :key="role">
+                            <label class="flex items-center p-4 border border-gray-200 rounded-lg shadow-sm cursor-pointer hover:bg-blue-50 hover:border-blue-200 transition-colors gap-4">
+                                <input type="radio" name="role" :value="role" x-model="selectedUser.role" class="w-5 h-5 text-blue-600 border-gray-300 focus:ring-blue-500">
+                                <span class="text-base font-medium text-gray-700" x-text="role"></span>
+                            </label>
+                        </template>
+                    </div>
+                    <div class="flex justify-end space-x-3 mt-8">
+                        <button @click="editRoleModal = false" class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors">Batal</button>
+                        <button @click="saveRole()" style="background-color: #2563eb !important; color: white !important;" class="px-5 py-2.5 !bg-blue-600 !text-white rounded-lg hover:!bg-blue-700 font-medium shadow-md hover:shadow-lg transition-all">Simpan</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -284,22 +426,21 @@
                     </button>
                 </div>
                 <div class="space-y-4">
-                    <p class="text-sm text-gray-600 mb-2">Pilih hak akses untuk user <span class="font-semibold" x-text="selectedUser?.name"></span>:</p>
-                    <div class="grid grid-cols-2 gap-4 max-h-[300px] overflow-y-auto pr-2">
+                    <p class="text-sm text-gray-600 mb-2">Pilih modul yang dapat diakses oleh <span class="font-semibold" x-text="selectedUser?.name"></span>:</p>
+                    <div class="grid grid-cols-2 gap-4">
                         <template x-for="access in availableAccess" :key="access">
-                            <label class="flex items-center p-4 border border-gray-200 rounded-none shadow-sm cursor-pointer hover:bg-blue-50 hover:border-blue-200 transition-colors gap-4">
+                            <label class="flex items-center p-4 border border-gray-200 rounded-lg shadow-sm cursor-pointer hover:bg-blue-50 hover:border-blue-200 transition-colors gap-4">
                                 <input type="checkbox" :value="access" x-model="selectedAccess" class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
                                 <span class="text-base font-medium text-gray-700" x-text="access"></span>
                             </label>
                         </template>
                     </div>
-                    <div class="flex justify-end space-x-3 mt-6">
+                    <div class="flex justify-end space-x-3 mt-8">
                         <button @click="editAccessModal = false" class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors">Batal</button>
                         <button @click="saveAccess()" style="background-color: #2563eb !important; color: white !important;" class="px-5 py-2.5 !bg-blue-600 !text-white rounded-lg hover:!bg-blue-700 font-medium shadow-md hover:shadow-lg transition-all">Simpan</button>
                     </div>
                 </div>
             </div>
         </div>
-
     </div>
 </x-dashboard-layout>
