@@ -12,7 +12,7 @@
 
                 <!-- Navigation Links -->
                 <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                    <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
+                    <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')" class="text-xs">
                         {{ __('Dashboard') }}
                     </x-nav-link>
                 </div>
@@ -22,7 +22,7 @@
             <div class="hidden sm:flex sm:items-center sm:ms-6">
                 <x-dropdown align="right" width="48">
                     <x-slot name="trigger">
-                        <button class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150">
+                        <button class="inline-flex items-center px-3 py-2 border border-transparent text-xs leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150">
                             <div>{{ Auth::user()->name }}</div>
 
                             <div class="ms-1">
@@ -70,13 +70,31 @@
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                 {{ __('Dashboard') }}
             </x-responsive-nav-link>
+
+            @can('view module integrasi-sistem')
+            <x-responsive-nav-link :href="route('integrasi-sistem.index')" :active="request()->routeIs('integrasi-sistem.*')">
+                {{ __('Integrasi Sistem') }}
+            </x-responsive-nav-link>
+            @endcan
+
+            @can('view module management-user')
+            <x-responsive-nav-link :href="route('management-user')" :active="request()->routeIs('management-user')">
+                {{ __('Management User') }}
+            </x-responsive-nav-link>
+            @endcan
+
+            @can('view module history')
+            <x-responsive-nav-link :href="route('history')" :active="request()->routeIs('history')">
+                {{ __('Data History') }}
+            </x-responsive-nav-link>
+            @endcan
         </div>
 
         <!-- Responsive Settings Options -->
         <div class="pt-4 pb-1 border-t border-gray-200">
             <div class="px-4">
-                <div class="font-medium text-base text-gray-800">{{ Auth::user()->name }}</div>
-                <div class="font-medium text-sm text-gray-500">{{ Auth::user()->email }}</div>
+                <div class="font-medium text-sm text-gray-800">{{ Auth::user()->name }}</div>
+                <div class="font-medium text-xs text-gray-500">{{ Auth::user()->email }}</div>
             </div>
 
             <div class="mt-3 space-y-1">

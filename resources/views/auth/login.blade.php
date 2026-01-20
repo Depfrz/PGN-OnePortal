@@ -26,7 +26,7 @@
              <img src="{{ asset('images/pgn-logo.png') }}" alt="PGN Logo" class="w-[150px] h-auto mb-6 select-none">
 
              <!-- Title -->
-             <h1 class="text-3xl font-extrabold mb-2 text-black leading-tight tracking-tight select-none">
+             <h1 class="text-xl font-extrabold mb-2 text-black leading-tight tracking-tight select-none">
                  Welcome!<br>
                  What’s your email?
              </h1>
@@ -36,33 +36,33 @@
                 @csrf
 
                 @php
-                    $baseInputClasses = 'w-full h-[45px] px-4 text-base border rounded-[5px] focus:ring-2 block shadow-sm transition-all duration-200 placeholder-gray-400';
+                    $baseInputClasses = 'w-full h-[40px] px-3 text-xs border rounded-[5px] focus:ring-2 block shadow-sm transition-all duration-200 placeholder-gray-400';
                     $errorClasses = 'border-red-500 focus:ring-red-500 focus:border-red-500';
                     $defaultClasses = 'border-gray-300 focus:ring-[#0492ff] focus:border-[#0492ff]';
                 @endphp
                 
                 <!-- Email / Username -->
-                <div class="mb-5 group">
-                    <label for="email" class="block text-base font-semibold text-gray-700 mb-2 group-focus-within:text-[#0492ff] transition-colors duration-200">Username</label>
+                <div class="mb-4 group">
+                    <label for="email" class="block text-xs font-semibold text-gray-700 mb-1 group-focus-within:text-[#0492ff] transition-colors duration-200">Username</label>
                     <input id="email" type="email" name="email" value="{{ old('email') }}" required autofocus 
                         class="{{ $baseInputClasses }} {{ $errors->has('email') ? $errorClasses : $defaultClasses }}"
                         placeholder="Enter your username or email">
-                    <x-input-error :messages="$errors->get('email')" class="mt-1 text-sm text-red-500 font-medium" />
+                    <x-input-error :messages="$errors->get('email')" class="mt-1 text-xs text-red-500 font-medium" />
                 </div>
 
                 <!-- Password -->
-                <div class="mb-8 group">
-                    <label for="password" class="block text-base font-semibold text-gray-700 mb-2 group-focus-within:text-[#0492ff] transition-colors duration-200">Password</label>
+                <div class="mb-6 group">
+                    <label for="password" class="block text-xs font-semibold text-gray-700 mb-1 group-focus-within:text-[#0492ff] transition-colors duration-200">Password</label>
                     <input id="password" type="password" name="password" required autocomplete="current-password"
                         class="{{ $baseInputClasses }} {{ $errors->has('password') ? $errorClasses : $defaultClasses }}"
                         placeholder="Enter your password">
-                    <x-input-error :messages="$errors->get('password')" class="mt-1 text-sm text-red-500 font-medium" />
+                    <x-input-error :messages="$errors->get('password')" class="mt-1 text-xs text-red-500 font-medium" />
                 </div>
 
                 <!-- Button -->
-                <div class="flex items-center mt-6">
+                <div class="flex items-center mt-4">
                     <button type="submit" :disabled="loading" :class="{ 'opacity-75 cursor-not-allowed': loading }"
-                            class="bg-[#0492ff] text-white text-base font-bold py-2.5 px-8 rounded-[5px] hover:bg-blue-600 transition-all duration-200 flex items-center justify-center shadow-md hover:shadow-lg min-w-[120px]">
+                            class="bg-[#0492ff] text-white text-xs font-bold py-2 px-6 rounded-[5px] hover:bg-blue-600 transition-all duration-200 flex items-center justify-center shadow-md hover:shadow-lg min-w-[100px]">
                         <span x-show="!loading">Login</span>
                         <span x-show="loading" class="flex items-center" style="display: none;">
                             <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">

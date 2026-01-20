@@ -13,19 +13,32 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        $this->call(RoleSeeder::class);
+        $this->call([
+            RoleSeeder::class,
+            ModuleSeeder::class,
+        ]);
 
         // Create Default Admin User if not exists
         $admin = User::firstOrCreate(
             ['email' => 'admin@pgn.co.id'],
             [
-                'name' => 'IT Administrator',
+                'name' => 'Admin',
                 'password' => bcrypt('password'), // Change this in production
             ]
         );
         $admin->assignRole('Admin');
 
-        // Create a Test SuperUser
+        // Create Supervisor
+        $supervisor = User::firstOrCreate(
+            ['email' => 'supervisor@pgn.co.id'],
+            [
+                'name' => 'Operational Supervisor',
+                'password' => bcrypt('password'),
+            ]
+        );
+        $supervisor->assignRole('Supervisor');
+
+        // Create SuperUser
         $superUser = User::firstOrCreate(
             ['email' => 'staff@pgn.co.id'],
             [
@@ -34,5 +47,15 @@ class DatabaseSeeder extends Seeder
             ]
         );
         $superUser->assignRole('SuperUser');
+
+        // Create Standard User
+        $user = User::firstOrCreate(
+            ['email' => 'user@pgn.co.id'],
+            [
+                'name' => 'Guest User',
+                'password' => bcrypt('password'),
+            ]
+        );
+        $user->assignRole('User');
     }
 }
