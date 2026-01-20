@@ -25,7 +25,8 @@ Membangun **PGN One Portal**, sebuah *Single Pane of Glass* yang menggabungkan:
 
 ### 2.1. Application Layer (Core)
 *   **Framework:** Laravel 12 (PHP 8.2+)
-*   **Frontend:** Blade Templates + Tailwind CSS + Vite
+*   **Frontend:** Blade Templates + Tailwind CSS
+*   **Frontend Logic:** Alpine.js (Lightweight reactivity)
 *   **Authentication:** Laravel Breeze (Customized)
 *   **Authorization:** Spatie Laravel Permission (RBAC)
 
@@ -98,7 +99,28 @@ Sistem menerapkan **Strict RBAC** dengan 4 peran utama:
 
 ---
 
-## 6. Strategi Implementasi
+## 6. Frontend Specification & UI/UX
+
+### 6.1. Layout Strategy
+*   **Sidebar Navigation:**
+    *   Responsive (Collapsible on mobile).
+    *   Role-aware visibility (Menu items hidden if unauthorized).
+    *   Style: Corporate Blue (PGN Identity).
+*   **Dashboard:**
+    *   Grid System (App Launcher style).
+    *   Dynamic Module Cards.
+*   **Forms:**
+    *   Live Preview using Alpine.js.
+    *   Instant validation feedback.
+
+### 6.2. Component Library
+*   `x-sidebar`: Navigasi utama dengan role check.
+*   `x-module-card`: Kartu akses modul di dashboard.
+*   `x-app-layout`: Wrapper utama dengan logic responsive.
+
+---
+
+## 7. Strategi Implementasi
 
 ### 6.1. Logika Otorisasi (Middleware/Gates)
 Validasi bertingkat (Cascading Check):
@@ -113,25 +135,27 @@ Validasi bertingkat (Cascading Check):
 
 ---
 
-## 7. Kebutuhan Non-Fungsional
+## 8. Kebutuhan Non-Fungsional
 *   **Performa:** Load time dashboard < 2 detik.
 *   **Keamanan:** Standar OWASP, proteksi CSRF/XSS, Session Timeout.
 *   **Skalabilitas:** Pemisahan jelas antara Logic Bisnis dan Framework.
 
 ---
 
-## 8. Peta Jalan (Roadmap)
+## 9. Peta Jalan (Roadmap)
 
 ### Fase 1: Fondasi (Current)
 *   [x] Inisialisasi Laravel 12.
 *   [x] Implementasi RBAC & Skema Database.
 *   [x] Setup Python Bridge.
 
-### Fase 2: Implementasi Inti
-*   [ ] Modul Manajemen User & Sistem.
-*   [ ] Integrasi Data Engine Pertama.
-*   [ ] Dashboard Prototype.
+### Fase 2: Frontend & Core UI (Next)
+*   [ ] Implementasi Layout Utama (Sidebar Dinamis).
+*   [ ] Dashboard Grid System.
+*   [ ] Modul Management UI (Alpine.js Preview).
+*   [ ] Integrasi Blade Directives untuk RBAC.
 
-### Fase 3: Pengembangan Lanjut
+### Fase 3: Integrasi Data & Logic
+*   [ ] Modul Manajemen User.
+*   [ ] Integrasi Data Engine Python.
 *   [ ] Reporting & Export.
-*   [ ] Audit Logging.

@@ -7,7 +7,7 @@ const Component = () => {
     <div className={styles.olegLaptev7JQh3EiS8B}>
       <div className={styles.rectangle4}>
         <img
-          src="../image/mklzgmep-zcdwnsk.png"
+          src="../image/mkm1pnty-gv4y5yc.png"
           className={styles.logoPertaminaGasNega}
         />
         <p className={styles.welcomeWhatSYourEmai}>
