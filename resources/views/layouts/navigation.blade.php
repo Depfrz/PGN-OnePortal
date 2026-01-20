@@ -78,7 +78,7 @@
             @endcan
 
             @can('view module management-user')
-            <x-responsive-nav-link :href="route('management-user')" :active="request()->routeIs('management-user')">
+            <x-responsive-nav-link :href="route('management-user.index')" :active="request()->routeIs('management-user.*')">
                 {{ __('Management User') }}
             </x-responsive-nav-link>
             @endcan

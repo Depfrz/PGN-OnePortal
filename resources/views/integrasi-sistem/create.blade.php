@@ -21,7 +21,7 @@
 
             <!-- Form Container -->
             <div class="border border-black rounded-[15px] p-8 lg:p-10 w-full max-w-[1200px] mx-auto">
-                <form action="#" method="POST" x-data="{ 
+                <form action="{{ route('integrasi-sistem.store') }}" method="POST" x-data="{ 
                     categoryOpen: false, 
                     tabTypeOpen: false,
                     selectedCategory: '',

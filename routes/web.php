@@ -22,6 +22,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('role:Supervisor|Admin') // Restricted
         ->name('integrasi-sistem.create');
 
+    Route::post('/integrasi-sistem/tambah', [IntegrasiSistemController::class, 'store'])
+        ->middleware('role:Supervisor|Admin') // Restricted
+        ->name('integrasi-sistem.store');
+
     // Management User Routes
     Route::middleware(['role:Admin'])->prefix('management-user')->name('management-user.')->group(function () {
         Route::get('/', [ManagementUserController::class, 'index'])->name('index');
