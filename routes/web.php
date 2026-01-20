@@ -23,9 +23,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('integrasi-sistem.create');
 
     // Management User Routes
-    Route::get('/management-user', [ManagementUserController::class, 'index'])
-        ->middleware('role:Admin') // Strictly Admin
-        ->name('management-user');
+    Route::middleware(['role:Admin'])->prefix('management-user')->name('management-user.')->group(function () {
+        Route::get('/', [ManagementUserController::class, 'index'])->name('index');
+        Route::post('/', [ManagementUserController::class, 'store'])->name('store');
+        Route::put('/{user}', [ManagementUserController::class, 'update'])->name('update');
+        Route::delete('/{user}', [ManagementUserController::class, 'destroy'])->name('destroy');
+        Route::patch('/{user}/role', [ManagementUserController::class, 'updateRole'])->name('update-role');
+        Route::patch('/{user}/access', [ManagementUserController::class, 'updateAccess'])->name('update-access');
+        Route::patch('/{user}/password', [ManagementUserController::class, 'resetPassword'])->name('reset-password');
+    });
 
     Route::get('/history', function () {
         return view('history');

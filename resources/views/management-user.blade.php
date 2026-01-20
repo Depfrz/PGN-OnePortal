@@ -190,7 +190,7 @@
 
         <!-- Reset Password Modal -->
         <div x-show="resetPasswordModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm transition-opacity" style="display: none;">
-            <div class="bg-white rounded-xl p-8 w-[450px] shadow-2xl transform transition-all">
+            <div class="bg-white rounded-xl p-8 w-[600px] shadow-2xl transform transition-all">
                 <div class="mb-6">
                     <h2 class="text-xl font-bold text-gray-800">Reset Password</h2>
                     <p class="text-sm text-gray-500 mt-1">Buat password baru untuk user ini.</p>
@@ -245,7 +245,7 @@
 
         <!-- Edit Role Modal -->
         <div x-show="editRoleModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm transition-opacity" style="display: none;">
-            <div class="bg-white rounded-xl p-8 w-[400px] shadow-2xl transform transition-all">
+            <div class="bg-white rounded-xl p-8 w-[600px] shadow-2xl transform transition-all">
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-xl font-bold text-gray-800">Edit Role</h2>
                     <button @click="editRoleModal = false" class="text-gray-400 hover:text-gray-600 transition-colors">
@@ -274,7 +274,7 @@
 
         <!-- Edit Access Modal -->
         <div x-show="editAccessModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm transition-opacity" style="display: none;">
-            <div class="bg-white rounded-xl p-8 w-[500px] shadow-2xl transform transition-all">
+            <div class="bg-white rounded-xl p-8 w-[600px] shadow-2xl transform transition-all">
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-xl font-bold text-gray-800">Edit Hak Akses</h2>
                     <button @click="editAccessModal = false" class="text-gray-400 hover:text-gray-600 transition-colors">
