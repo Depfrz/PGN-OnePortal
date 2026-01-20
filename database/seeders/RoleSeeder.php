@@ -17,22 +17,11 @@ class RoleSeeder extends Seeder
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
 
         // 1. Define Permissions
+        // We focus on broad permissions here. Specific module access is handled by ModuleAccess table.
         $permissions = [
-            // Dashboard
             'view dashboard',
-            
-            // Data Operations
-            'view data',
-            'create data',
-            'edit own data',
-            'edit all data',
-            'delete data',
-            
-            // System Management
-            'manage systems', // Create/Edit Modules
-            
-            // User Management
-            'manage users', // CRUD Users
+            'manage systems', // Create/Edit/Delete Modules (Global)
+            'manage users',   // CRUD Users
         ];
 
         foreach ($permissions as $permission) {
@@ -41,46 +30,36 @@ class RoleSeeder extends Seeder
 
         // 2. Define Roles and Assign Permissions
 
-        // Role: User (Auditor/Guest)
-        // Deskripsi: Read-Only.
+        // Role: User
+        // Constraint: Login enabled. Only see assigned modules. No edit/delete.
         $userRole = Role::firstOrCreate(['name' => 'User']);
         $userRole->syncPermissions([
             'view dashboard',
-            'view data'
+            // Specific module permissions will be checked via ModuleAccess, not global Spatie permissions
         ]);
 
-        // Role: SuperUser (Staff/Operator)
-        // Deskripsi: Input Terbatas (Scoped Write).
+        // Role: SuperUser
+        // Constraint: Login enabled. See assigned modules. Input data (write) on assigned modules. No delete.
         $superUserRole = Role::firstOrCreate(['name' => 'SuperUser']);
         $superUserRole->syncPermissions([
             'view dashboard',
-            'view data',
-            'create data',
-            'edit own data'
         ]);
 
-        // Role: Supervisor (Manager)
-        // Deskripsi: Full Control Modul.
+        // Role: Supervisor
+        // Constraint: Full access to all modules (Read/Write/Delete).
         $supervisorRole = Role::firstOrCreate(['name' => 'Supervisor']);
         $supervisorRole->syncPermissions([
             'view dashboard',
-            'view data',
-            'create data',
-            'edit all data',
-            'delete data',
-            'manage systems'
+            'manage systems', // Implies full module control
         ]);
 
-        // Role: Admin (IT Support)
-        // Deskripsi: System Admin.
+        // Role: Admin
+        // Constraint: Supervisor rights + User Management.
         $adminRole = Role::firstOrCreate(['name' => 'Admin']);
         $adminRole->syncPermissions([
             'view dashboard',
-            'view data',
-            'edit all data',
-            'delete data',
             'manage systems',
-            'manage users'
+            'manage users',
         ]);
     }
 }
