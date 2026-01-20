@@ -34,5 +34,25 @@ class DatabaseSeeder extends Seeder
             ]
         );
         $superUser->assignRole('SuperUser');
+
+        // Create a Test Supervisor
+        $supervisor = User::firstOrCreate(
+            ['email' => 'supervisor@pgn.co.id'],
+            [
+                'name' => 'Project Manager',
+                'password' => bcrypt('password'),
+            ]
+        );
+        $supervisor->assignRole('Supervisor');
+
+        // Create a Test User (Auditor/Guest)
+        $user = User::firstOrCreate(
+            ['email' => 'user@pgn.co.id'],
+            [
+                'name' => 'Guest Auditor',
+                'password' => bcrypt('password'),
+            ]
+        );
+        $user->assignRole('User');
     }
 }
