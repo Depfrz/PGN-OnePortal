@@ -13,6 +13,8 @@
         newUser: {
             name: '',
             email: '',
+            instansi: '',
+            jabatan: '',
             password: '',
             password_confirmation: '',
             role: 'User',
@@ -205,7 +207,7 @@
         <div>
             <div class="flex items-center justify-between mb-6">
                 <h2 class="text-xl font-bold text-gray-800">Manajemen User</h2>
-                <button @click="addUserModal = true" style="background-color: #2563eb !important; color: white !important;" class="!bg-blue-600 !text-white font-medium text-sm py-2.5 px-6 rounded-lg hover:!bg-blue-700 transition-all shadow-md hover:shadow-lg flex items-center border border-transparent">
+                <button @click="addUserModal = true" style="background-color: #2563eb !important; color: white !important;" class="bg-blue-600 text-white font-medium text-sm py-2.5 px-6 rounded-lg hover:bg-blue-700 transition-all shadow-md hover:shadow-lg flex items-center">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
                     </svg>
@@ -219,9 +221,9 @@
                     <thead>
                         <tr class="text-left">
                             <th class="pb-2 font-semibold text-xs text-gray-500 uppercase tracking-wider pl-4">Nama / Email</th>
-                            <th class="pb-2 font-semibold text-xs text-gray-500 uppercase tracking-wider">Instansi</th>
-                            <th class="pb-2 font-semibold text-xs text-gray-500 uppercase tracking-wider">Jabatan</th>
-                            <th class="pb-2 font-semibold text-xs text-gray-500 uppercase tracking-wider">Role</th>
+                            <th class="pb-2 font-semibold text-xs text-gray-500 uppercase tracking-wider min-w-[150px] pr-4">Instansi</th>
+                            <th class="pb-2 font-semibold text-xs text-gray-500 uppercase tracking-wider min-w-[150px] pr-4">Jabatan</th>
+                            <th class="pb-2 font-semibold text-xs text-gray-500 uppercase tracking-wider min-w-[120px] pr-4">Role</th>
                             <th class="pb-2 font-semibold text-xs text-gray-500 uppercase tracking-wider text-center">Status</th>
                             <th class="pb-2 font-semibold text-xs text-gray-500 uppercase tracking-wider text-center">Hak Akses</th>
                             <th class="pb-2 font-semibold text-xs text-gray-500 uppercase tracking-wider text-center pr-4">Aksi</th>
@@ -247,7 +249,7 @@
                                     </div>
                                 </td>
                                 <td class="p-4 text-center border-y border-gray-200 group-hover:border-blue-300 transition-colors">
-                                    <span style="background-color: #dcfce7; color: #166534; border: 1px solid #bbf7d0;" class="inline-flex items-center px-4 py-1.5 rounded-full text-sm font-semibold !bg-green-100 !text-green-800 !border-green-200 shadow-sm" x-text="user.status"></span>
+                                    <span style="background-color: #dcfce7 !important; color: #166534 !important; border: 1px solid #bbf7d0 !important;" class="inline-flex items-center px-4 py-1.5 rounded-full text-sm font-semibold bg-green-100 text-green-800 border border-green-200 shadow-sm" x-text="user.status"></span>
                                 </td>
                                 <td class="p-4 text-center border-y border-gray-200 group-hover:border-blue-300 transition-colors">
                                     <div @click="openEditAccess(user)" class="flex items-center justify-center space-x-2 cursor-pointer bg-blue-50 hover:bg-blue-100 p-2 rounded-lg transition-colors group/access border border-blue-100">
@@ -284,7 +286,7 @@
 
         <!-- Add User Modal -->
         <div x-show="addUserModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm transition-opacity" style="display: none;">
-            <div class="bg-white rounded-xl p-8 w-[500px] shadow-2xl transform transition-all">
+            <div class="bg-white rounded-xl p-6 w-[500px] shadow-2xl transform transition-all">
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-xl font-bold text-gray-800">Tambah User Baru</h2>
                     <button @click="addUserModal = false" class="text-gray-400 hover:text-gray-600 transition-colors">
@@ -293,34 +295,42 @@
                         </svg>
                     </button>
                 </div>
-                <div class="space-y-5">
+                <div class="space-y-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Nama Lengkap</label>
-                        <input x-model="newUser.name" type="text" placeholder="Masukkan nama lengkap" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none">
+                        <input x-model="newUser.name" type="text" placeholder="Masukkan nama lengkap" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
-                        <input x-model="newUser.email" type="email" placeholder="contoh@email.com" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none">
+                        <input x-model="newUser.email" type="email" placeholder="contoh@email.com" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Instansi</label>
+                        <input x-model="newUser.instansi" type="text" placeholder="Masukkan instansi" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Jabatan</label>
+                        <input x-model="newUser.jabatan" type="text" placeholder="Masukkan jabatan" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                        <input x-model="newUser.password" type="password" placeholder="Minimal 8 karakter" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none">
+                        <input x-model="newUser.password" type="password" placeholder="Minimal 8 karakter" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Konfirmasi Password</label>
-                        <input x-model="newUser.password_confirmation" type="password" placeholder="Ulangi Password" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none">
+                        <input x-model="newUser.password_confirmation" type="password" placeholder="Ulangi Password" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none">
                     </div>
                     <div>
                          <label class="block text-sm font-medium text-gray-700 mb-1">Role</label>
-                         <select x-model="newUser.role" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none">
+                         <select x-model="newUser.role" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none">
                              <template x-for="role in availableRoles" :key="role">
                                  <option :value="role" x-text="role"></option>
                              </template>
                          </select>
                     </div>
-                    <div class="flex justify-end space-x-3 mt-8">
+                    <div class="flex justify-end space-x-3 mt-6">
                         <button @click="addUserModal = false" class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors">Batal</button>
-                        <button @click="saveUser()" style="background-color: #2563eb !important; color: white !important;" class="px-5 py-2.5 !bg-blue-600 !text-white rounded-lg hover:!bg-blue-700 font-medium shadow-md hover:shadow-lg transition-all">Simpan User</button>
+                        <button @click="saveUser()" style="background-color: #2563eb !important; color: white !important;" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-md hover:shadow-lg transition-all">Simpan User</button>
                     </div>
                 </div>
             </div>

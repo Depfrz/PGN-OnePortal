@@ -27,8 +27,8 @@ class ManagementUserController extends Controller
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
-                'instansi' => 'PGN', // Static for now
-                'jabatan' => 'Staff', // Static for now
+                'instansi' => $user->instansi ?? '-',
+                'jabatan' => $user->jabatan ?? '-',
                 'role' => $user->roles->first()?->name ?? 'User',
                 'status' => 'Active', // Static for now
                 'hak_akses' => $user->moduleAccesses->map(fn($ma) => $ma->module->name)->values()->toArray(),
@@ -47,6 +47,8 @@ class ManagementUserController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            'instansi' => ['nullable', 'string', 'max:255'],
+            'jabatan' => ['nullable', 'string', 'max:255'],
             'role' => ['required', 'exists:roles,name'],
             'hak_akses' => ['nullable', 'array'],
             'hak_akses.*' => ['exists:modules,name'],
@@ -56,6 +58,8 @@ class ManagementUserController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
+            'instansi' => $request->instansi,
+            'jabatan' => $request->jabatan,
         ]);
 
         $user->assignRole($request->role);
