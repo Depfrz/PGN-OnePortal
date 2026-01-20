@@ -9,18 +9,18 @@ const Component = () => {
         <div className={styles.rectangle49}>
           <div className={styles.rectangle13}>
             <img
-              src="../image/mkm77sjy-lge4hfp.png"
+              src="../image/mkmakoe3-no73d28.png"
               className={styles.logoPertaminaGasNega}
             />
             <div className={styles.autoWrapper}>
               <div className={styles.lineMdHomeTwotone}>
                 <img
-                  src="../image/mkm77sjv-ltt2qy7.svg"
+                  src="../image/mkmakoe2-72n6uk1.svg"
                   className={styles.vector}
                 />
-                <img src="../image/mkm77sjv-huokz0j.svg" className={styles.group} />
+                <img src="../image/mkmakoe2-nc163uf.svg" className={styles.group} />
                 <img
-                  src="../image/mkm77sjv-hv20gre.svg"
+                  src="../image/mkmakoe2-loi8o3n.svg"
                   className={styles.materialSymbolsHomeR}
                 />
               </div>
@@ -28,14 +28,14 @@ const Component = () => {
             </div>
             <div className={styles.autoWrapper2}>
               <img
-                src="../image/mkm77sjv-xbab0fj.svg"
+                src="../image/mkmakoe2-nzfrdsl.svg"
                 className={styles.materialSymbolsHisto}
               />
               <p className={styles.history}>History</p>
             </div>
             <div className={styles.autoWrapper3}>
               <img
-                src="../image/mkm77sjv-ap3dh9j.svg"
+                src="../image/mkmakoe2-02ylqf2.svg"
                 className={styles.materialSymbolsHisto}
               />
               <p className={styles.managamentUser}>Managament User</p>
@@ -44,7 +44,7 @@ const Component = () => {
               <p className={styles.tambahModulSystem}>Tambah Modul / System</p>
               <div className={styles.rectangle17}>
                 <img
-                  src="../image/mkm77sjv-omn0kip.svg"
+                  src="../image/mkmakoe2-hlabgm7.svg"
                   className={styles.materialSymbolsHisto}
                 />
                 <p className={styles.integrasiSistem}>Integrasi Sistem</p>
@@ -58,12 +58,12 @@ const Component = () => {
               </p>
               <div className={styles.ionNotifcations}>
                 <img
-                  src="../image/mkm77sjv-44pvb0m.svg"
+                  src="../image/mkmakoe2-yp179ju.svg"
                   className={styles.frame1}
                 />
               </div>
               <p className={styles.admin}>Admin</p>
-              <img src="../image/mkm77sjv-utbhie0.svg" className={styles.group2} />
+              <img src="../image/mkmakoe1-yho9ahz.svg" className={styles.group2} />
             </div>
             <div className={styles.rectangle42}>
               <p className={styles.manajemenModulAplika}>
@@ -79,7 +79,7 @@ const Component = () => {
                 <div className={styles.rectangle44}>
                   <p className={styles.cariModul}>Cari Modul...</p>
                   <img
-                    src="../image/mkm77sjv-3z6lmb9.svg"
+                    src="../image/mkmakoe2-kga5ir1.svg"
                     className={styles.icSharpSearch}
                   />
                 </div>
@@ -103,7 +103,7 @@ const Component = () => {
                   <div className={styles.rectangle54}>
                     <p className={styles.visitSite}>Visit site!</p>
                     <img
-                      src="../image/mkm77sjv-rmnww2d.svg"
+                      src="../image/mkmakoe2-5ajfltd.svg"
                       className={styles.iconParkGoOn}
                     />
                   </div>
@@ -126,7 +126,7 @@ const Component = () => {
                   <div className={styles.rectangle542}>
                     <p className={styles.visitSite}>Visit site!</p>
                     <img
-                      src="../image/mkm77sjv-e8nstu1.svg"
+                      src="../image/mkmakoe2-udhka1f.svg"
                       className={styles.iconParkGoOn}
                     />
                   </div>

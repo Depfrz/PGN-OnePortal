@@ -10,31 +10,31 @@ const Component = () => {
           <div className={styles.halamanAdmin}>
             <div className={styles.rectangle5}>
               <img
-                src="../image/mkm6pdq5-25arr2x.png"
+                src="../image/mkmako28-0xm1b5m.png"
                 className={styles.logoPertaminaGasNega}
               />
               <div className={styles.autoWrapper}>
                 <div className={styles.lineMdHomeTwotone2}>
                   <img
-                    src="../image/mkm6pdq1-5odmxg7.svg"
+                    src="../image/mkmako23-qesz44h.svg"
                     className={styles.vector}
                   />
                   <img
-                    src="../image/mkm6pdq1-e8uq91s.svg"
+                    src="../image/mkmako23-icj5kql.svg"
                     className={styles.group}
                   />
                   <div className={styles.materialSymbolsHomeR2}>
                     <div className={styles.lineMdHomeTwotone}>
                       <img
-                        src="../image/mkm6pdq1-5odmxg7.svg"
+                        src="../image/mkmako23-qesz44h.svg"
                         className={styles.vector}
                       />
                       <img
-                        src="../image/mkm6pdq1-e8uq91s.svg"
+                        src="../image/mkmako23-icj5kql.svg"
                         className={styles.group}
                       />
                       <img
-                        src="../image/mkm6pdq1-6qt1mdp.svg"
+                        src="../image/mkmako24-xors19k.svg"
                         className={styles.materialSymbolsHomeR}
                       />
                     </div>
@@ -46,7 +46,7 @@ const Component = () => {
                 <div className={styles.materialSymbolsHisto3}>
                   <div className={styles.materialSymbolsHisto2}>
                     <img
-                      src="../image/mkm6pdq1-21cqg2o.svg"
+                      src="../image/mkmako24-qaz0xm2.svg"
                       className={styles.materialSymbolsHisto}
                     />
                   </div>
@@ -56,12 +56,12 @@ const Component = () => {
               <div className={styles.rectangle19}>
                 <p className={styles.managamentUser}>Managament User</p>
                 <img
-                  src="../image/mkm6pdq1-9r8kefe.svg"
+                  src="../image/mkmako24-hpu8q2f.svg"
                   className={styles.majesticonsUsers}
                 />
                 <div className={styles.rectangle20}>
                   <img
-                    src="../image/mkm6pdq1-9r8kefe.svg"
+                    src="../image/mkmako24-hpu8q2f.svg"
                     className={styles.majesticonsUsers2}
                   />
                   <p className={styles.managamentUser2}>Managament User</p>
@@ -70,7 +70,7 @@ const Component = () => {
               <div className={styles.autoWrapper3}>
                 <div className={styles.vector3}>
                   <img
-                    src="../image/mkm6pdq1-3qkow3z.svg"
+                    src="../image/mkmako24-ess9dtl.svg"
                     className={styles.vector2}
                   />
                 </div>
@@ -84,13 +84,13 @@ const Component = () => {
                 </p>
                 <div className={styles.ionNotifcations}>
                   <img
-                    src="../image/mkm6pdq1-1ad4cxc.svg"
+                    src="../image/mkmako23-esu76s4.svg"
                     className={styles.frame1}
                   />
                 </div>
                 <p className={styles.admin}>Admin</p>
                 <img
-                  src="../image/mkm6pdq1-jl6gb1x.svg"
+                  src="../image/mkmako23-i2l3ej9.svg"
                   className={styles.ggProfile}
                 />
               </div>
@@ -142,29 +142,29 @@ const Component = () => {
                       <div className={styles.line2} />
                     </div>
                     <img
-                      src="../image/mkm6pdq1-ixdvpg0.svg"
+                      src="../image/mkmako23-z1ehdlr.svg"
                       className={styles.systemUiconsCross}
                     />
                     <div className={styles.autoWrapper10}>
                       <p className={styles.iziin}>iziin</p>
                       <img
-                        src="../image/mkm6pdq1-snj9wb4.svg"
+                        src="../image/mkmako23-00rjunx.svg"
                         className={styles.codexChecklist}
                       />
                     </div>
                     <div className={styles.autoWrapper11}>
                       <img
-                        src="../image/mkm6pdq1-b6wx4vk.svg"
+                        src="../image/mkmako23-msec1is.svg"
                         className={styles.vector4}
                       />
                       <p className={styles.active}>Active</p>
                     </div>
                     <img
-                      src="../image/mkm6pdq1-0h4iole.svg"
+                      src="../image/mkmako23-l5zyzxu.svg"
                       className={styles.vector5}
                     />
                     <img
-                      src="../image/mkm6pdq1-yxkxfuj.svg"
+                      src="../image/mkmako23-5981dhu.svg"
                       className={styles.delete}
                     />
                   </div>
@@ -178,26 +178,26 @@ const Component = () => {
                     <p className={styles.mahasiswa2}>Mahasiswa</p>
                     <p className={styles.manager}>Manager</p>
                     <img
-                      src="../image/mkm6pdq1-2bwbpnc.svg"
+                      src="../image/mkmako23-ffjfkdh.svg"
                       className={styles.mdiPencil}
                     />
                     <p className={styles.iziin2}>iziin</p>
                     <img
-                      src="../image/mkm6pdq1-b6wx4vk.svg"
+                      src="../image/mkmako23-msec1is.svg"
                       className={styles.vector6}
                     />
                     <img
-                      src="../image/mkm6pdq1-0h4iole.svg"
+                      src="../image/mkmako23-l5zyzxu.svg"
                       className={styles.vector7}
                     />
                     <img
-                      src="../image/mkm6pdq1-yxkxfuj.svg"
+                      src="../image/mkmako23-5981dhu.svg"
                       className={styles.delete2}
                     />
                     <p className={styles.active2}>Active</p>
                   </div>
                   <img
-                    src="../image/mkm6pdq1-ugj63ty.svg"
+                    src="../image/mkmako23-lleizs1.svg"
                     className={styles.codexChecklist2}
                   />
                 </div>

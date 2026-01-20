@@ -9,18 +9,18 @@ const Component = () => {
         <div className={styles.rectangle18}>
           <div className={styles.rectangle13}>
             <img
-              src="../image/mkm3pdrr-tlwc2c9.png"
+              src="../image/mkmako0o-rfpzwkq.png"
               className={styles.logoPertaminaGasNega}
             />
             <div className={styles.autoWrapper}>
               <div className={styles.lineMdHomeTwotone}>
                 <img
-                  src="../image/mkm3pdrm-lkeyevu.svg"
+                  src="../image/mkmako0n-umy6bzs.svg"
                   className={styles.vector}
                 />
-                <img src="../image/mkm3pdrm-mzmhe2y.svg" className={styles.group} />
+                <img src="../image/mkmako0n-21twfdq.svg" className={styles.group} />
                 <img
-                  src="../image/mkm3pdrm-8jdang1.svg"
+                  src="../image/mkmako0n-1cdk9m5.svg"
                   className={styles.materialSymbolsHomeR}
                 />
               </div>
@@ -28,14 +28,14 @@ const Component = () => {
             </div>
             <div className={styles.autoWrapper2}>
               <img
-                src="../image/mkm3pdrm-q5rbtao.svg"
+                src="../image/mkmako0n-o96a9nz.svg"
                 className={styles.materialSymbolsHisto}
               />
               <p className={styles.history}>History</p>
             </div>
             <div className={styles.autoWrapper3}>
               <img
-                src="../image/mkm3pdrm-pi7nobp.svg"
+                src="../image/mkmako0n-9z0rkqi.svg"
                 className={styles.materialSymbolsHisto}
               />
               <p className={styles.managamentUser}>Managament User</p>
@@ -44,7 +44,7 @@ const Component = () => {
               <p className={styles.tambahModulSystem}>Tambah Modul / System</p>
               <div className={styles.rectangle17}>
                 <img
-                  src="../image/mkm3pdrn-j28jlxk.svg"
+                  src="../image/mkmako0n-sbhjeh6.svg"
                   className={styles.materialSymbolsHisto}
                 />
                 <p className={styles.integrasiSistem}>Integrasi Sistem</p>
@@ -58,12 +58,12 @@ const Component = () => {
               </p>
               <div className={styles.ionNotifcations}>
                 <img
-                  src="../image/mkm3pdrn-4b5l5zj.svg"
+                  src="../image/mkmako0n-pijauoi.svg"
                   className={styles.frame1}
                 />
               </div>
               <p className={styles.admin}>Admin</p>
-              <img src="../image/mkm3pdrm-ve9m8qx.svg" className={styles.group2} />
+              <img src="../image/mkmako0n-j14lzko.svg" className={styles.group2} />
             </div>
             <div className={styles.rectangle42}>
               <p className={styles.manajemenModulAplika}>
@@ -79,14 +79,14 @@ const Component = () => {
                 <div className={styles.rectangle44}>
                   <p className={styles.cariModul}>Cari Modul...</p>
                   <img
-                    src="../image/mkm3pdrn-06u7oum.svg"
+                    src="../image/mkmako0n-n9vmvqp.svg"
                     className={styles.icSharpSearch}
                   />
                 </div>
               </div>
               <div className={styles.rectangle47}>
                 <img
-                  src="../image/mkm3pdrn-c7kxpbo.svg"
+                  src="../image/mkmako0n-8jeoc79.svg"
                   className={styles.iconoirDbError}
                 />
                 <p className={styles.daftarAplikasiPgnOne}>

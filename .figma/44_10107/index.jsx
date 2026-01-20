@@ -9,18 +9,18 @@ const Component = () => {
         <div className={styles.rectangle18}>
           <div className={styles.rectangle13}>
             <img
-              src="../image/mkm77m8o-tsh3eyt.png"
+              src="../image/mkmaknr9-v6398fa.png"
               className={styles.logoPertaminaGasNega}
             />
             <div className={styles.autoWrapper}>
               <div className={styles.lineMdHomeTwotone}>
                 <img
-                  src="../image/mkm77m8m-its5dka.svg"
+                  src="../image/mkmaknr7-bu5r3uy.svg"
                   className={styles.vector}
                 />
-                <img src="../image/mkm77m8m-5l6rp36.svg" className={styles.group} />
+                <img src="../image/mkmaknr7-xue9lch.svg" className={styles.group} />
                 <img
-                  src="../image/mkm77m8m-uu58f8a.svg"
+                  src="../image/mkmaknr7-qgky7pt.svg"
                   className={styles.materialSymbolsHomeR}
                 />
               </div>
@@ -28,14 +28,14 @@ const Component = () => {
             </div>
             <div className={styles.autoWrapper2}>
               <img
-                src="../image/mkm77m8m-n1a1ygk.svg"
+                src="../image/mkmaknr7-9o5sprv.svg"
                 className={styles.materialSymbolsHisto}
               />
               <p className={styles.history}>History</p>
             </div>
             <div className={styles.autoWrapper3}>
               <img
-                src="../image/mkm77m8m-scuyu1s.svg"
+                src="../image/mkmaknr7-0pb7upg.svg"
                 className={styles.materialSymbolsHisto}
               />
               <p className={styles.managamentUser}>Managament User</p>
@@ -44,7 +44,7 @@ const Component = () => {
               <p className={styles.tambahModulSystem}>Tambah Modul / System</p>
               <div className={styles.rectangle17}>
                 <img
-                  src="../image/mkm77m8n-ea3e8dk.svg"
+                  src="../image/mkmaknr7-8yghdb3.svg"
                   className={styles.materialSymbolsHisto}
                 />
                 <p className={styles.integrasiSistem}>Integrasi Sistem</p>
@@ -58,12 +58,12 @@ const Component = () => {
               </p>
               <div className={styles.ionNotifcations}>
                 <img
-                  src="../image/mkm77m8n-ub6p4p2.svg"
+                  src="../image/mkmaknr7-qxf8gc0.svg"
                   className={styles.frame1}
                 />
               </div>
               <p className={styles.admin}>Admin</p>
-              <img src="../image/mkm77m8m-27y7d6t.svg" className={styles.group2} />
+              <img src="../image/mkmaknr7-ha5q744.svg" className={styles.group2} />
             </div>
             <div className={styles.rectangle42}>
               <p className={styles.manajemenModulAplika}>
@@ -79,7 +79,7 @@ const Component = () => {
                 <div className={styles.rectangle44}>
                   <p className={styles.cariModul}>Cari Modul...</p>
                   <img
-                    src="../image/mkm77m8n-l52pyr1.svg"
+                    src="../image/mkmaknr7-t34k6ze.svg"
                     className={styles.icSharpSearch}
                   />
                 </div>
@@ -87,19 +87,19 @@ const Component = () => {
               <div className={styles.rectangle47}>
                 <div className={styles.rectangle51}>
                   <img
-                    src="../image/mkm77m8n-wr846pt.svg"
+                    src="../image/mkmaknr7-ffz480i.svg"
                     className={styles.icSharpSearch}
                   />
                 </div>
                 <div className={styles.rectangle52}>
                   <img
-                    src="../image/mkm77m8n-wr846pt.svg"
+                    src="../image/mkmaknr7-ffz480i.svg"
                     className={styles.icSharpSearch}
                   />
                 </div>
                 <div className={styles.rectangle53}>
                   <img
-                    src="../image/mkm77m8n-wr846pt.svg"
+                    src="../image/mkmaknr7-ffz480i.svg"
                     className={styles.icSharpSearch}
                   />
                 </div>

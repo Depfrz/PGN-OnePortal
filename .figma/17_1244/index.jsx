@@ -9,18 +9,18 @@ const Component = () => {
         <div className={styles.halamanAdmin}>
           <div className={styles.rectangle5}>
             <img
-              src="../image/mkm6ptvk-l6a6ttm.png"
+              src="../image/mkmako2v-0ajdgoo.png"
               className={styles.logoPertaminaGasNega}
             />
             <div className={styles.autoWrapper}>
               <div className={styles.lineMdHomeTwotone}>
                 <img
-                  src="../image/mkm6ptvg-oxrlkfb.svg"
+                  src="../image/mkmako2s-8ze9pyr.svg"
                   className={styles.vector}
                 />
-                <img src="../image/mkm6ptvg-oa94jts.svg" className={styles.group} />
+                <img src="../image/mkmako2s-dazxbfe.svg" className={styles.group} />
                 <img
-                  src="../image/mkm6ptvg-l83nxtw.svg"
+                  src="../image/mkmako2s-q1fh11a.svg"
                   className={styles.materialSymbolsHomeR}
                 />
               </div>
@@ -29,18 +29,18 @@ const Component = () => {
             <div className={styles.autoWrapper2}>
               <div className={styles.mdiAccountEyeOutline}>
                 <img
-                  src="../image/mkm6ptvg-hkyr8mk.svg"
+                  src="../image/mkmako2s-ou2ajci.svg"
                   className={styles.materialSymbolsHisto}
                 />
               </div>
               <p className={styles.history}>History</p>
             </div>
             <div className={styles.rectangle23}>
-              <img src="../image/mkm6ptvh-csbqr8m.svg" className={styles.group2} />
+              <img src="../image/mkmako2s-je6l9un.svg" className={styles.group2} />
               <p className={styles.managamentUser}>Managament User</p>
             </div>
             <div className={styles.vector3}>
-              <img src="../image/mkm6ptvh-ln1xi8c.svg" className={styles.vector2} />
+              <img src="../image/mkmako2s-vxl46ix.svg" className={styles.vector2} />
             </div>
           </div>
           <div className={styles.autoWrapper8}>
@@ -50,13 +50,13 @@ const Component = () => {
               </p>
               <div className={styles.ionNotifcations}>
                 <img
-                  src="../image/mkm6ptvg-c26dn0j.svg"
+                  src="../image/mkmako2r-7lqw394.svg"
                   className={styles.frame1}
                 />
               </div>
               <p className={styles.admin}>Admin</p>
               <img
-                src="../image/mkm6ptvg-yqqn1l9.svg"
+                src="../image/mkmako2r-b5x8s2q.svg"
                 className={styles.ggProfile}
               />
             </div>
@@ -88,19 +88,19 @@ const Component = () => {
                   <p className={styles.falih123}>Falih123</p>
                   <div className={styles.rectangle19} />
                   <img
-                    src="../image/mkm6ptvg-5hzo1g3.svg"
+                    src="../image/mkmako2s-68g1fhl.svg"
                     className={styles.systemUiconsCross}
                   />
                   <img
-                    src="../image/mkm6ptvg-lkdczm4.svg"
+                    src="../image/mkmako2s-ob22cpb.svg"
                     className={styles.vector4}
                   />
                   <img
-                    src="../image/mkm6ptvg-wezl7v0.svg"
+                    src="../image/mkmako2s-66s1vl0.svg"
                     className={styles.vector5}
                   />
                   <img
-                    src="../image/mkm6ptvg-sv23nn1.svg"
+                    src="../image/mkmako2s-smm4hai.svg"
                     className={styles.delete}
                   />
                   <p className={styles.active}>Active</p>
@@ -112,15 +112,15 @@ const Component = () => {
                   </div>
                   <p className={styles.falih1232}>Falih123</p>
                   <img
-                    src="../image/mkm6ptvg-lkdczm4.svg"
+                    src="../image/mkmako2s-ob22cpb.svg"
                     className={styles.vector6}
                   />
                   <img
-                    src="../image/mkm6ptvg-wezl7v0.svg"
+                    src="../image/mkmako2s-66s1vl0.svg"
                     className={styles.vector7}
                   />
                   <img
-                    src="../image/mkm6ptvg-sv23nn1.svg"
+                    src="../image/mkmako2s-smm4hai.svg"
                     className={styles.delete2}
                   />
                   <p className={styles.active2}>Active</p>
@@ -137,7 +137,7 @@ const Component = () => {
                   </div>
                   <div className={styles.rectangle22}>
                     <img
-                      src="../image/mkm6ptvg-gsuw2qp.svg"
+                      src="../image/mkmako2s-vlf35d2.svg"
                       className={styles.rectangle24}
                     />
                   </div>

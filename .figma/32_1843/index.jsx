@@ -9,18 +9,18 @@ const Component = () => {
         <div className={styles.rectangle18}>
           <div className={styles.rectangle13}>
             <img
-              src="../image/mkm77hki-2pbzwam.png"
+              src="../image/mkmaknzy-y14fgm4.png"
               className={styles.logoPertaminaGasNega}
             />
             <div className={styles.autoWrapper}>
               <div className={styles.lineMdHomeTwotone}>
                 <img
-                  src="../image/mkm77hkh-hl9ayve.svg"
+                  src="../image/mkmaknzv-7idkbes.svg"
                   className={styles.vector}
                 />
-                <img src="../image/mkm77hkh-gm00c2f.svg" className={styles.group} />
+                <img src="../image/mkmaknzv-vumah6d.svg" className={styles.group} />
                 <img
-                  src="../image/mkm77hkh-vtw91f0.svg"
+                  src="../image/mkmaknzv-j0uh7n2.svg"
                   className={styles.materialSymbolsHomeR}
                 />
               </div>
@@ -28,14 +28,14 @@ const Component = () => {
             </div>
             <div className={styles.autoWrapper2}>
               <img
-                src="../image/mkm77hkh-n26gj8a.svg"
+                src="../image/mkmaknzv-s96ghg2.svg"
                 className={styles.materialSymbolsHisto}
               />
               <p className={styles.history}>History</p>
             </div>
             <div className={styles.autoWrapper3}>
               <img
-                src="../image/mkm77hkh-9avei19.svg"
+                src="../image/mkmaknzv-6cq0yy8.svg"
                 className={styles.materialSymbolsHisto}
               />
               <p className={styles.managamentUser}>Managament User</p>
@@ -44,7 +44,7 @@ const Component = () => {
               <p className={styles.tambahModulSystem}>Tambah Modul / System</p>
               <div className={styles.rectangle17}>
                 <img
-                  src="../image/mkm77hkh-5u40b1x.svg"
+                  src="../image/mkmaknzv-yppx2m0.svg"
                   className={styles.materialSymbolsHisto}
                 />
                 <p className={styles.integrasiSistem}>Integrasi Sistem</p>
@@ -61,23 +61,23 @@ const Component = () => {
                   Sistem telah selesai diintegrasikan!
                 </p>
                 <img
-                  src="../image/mkm77hkh-0hegaht.svg"
+                  src="../image/mkmaknzv-elqe7dj.svg"
                   className={styles.mingcuteNotification}
                 />
               </div>
               <div className={styles.ionNotifcations}>
                 <img
-                  src="../image/mkm77hkh-ko7288v.svg"
+                  src="../image/mkmaknzv-uev3x6s.svg"
                   className={styles.frame1}
                 />
               </div>
               <p className={styles.admin}>Admin</p>
-              <img src="../image/mkm77hkh-cu0yph6.svg" className={styles.group2} />
+              <img src="../image/mkmaknzv-zqxxkiv.svg" className={styles.group2} />
             </div>
             <div className={styles.rectangle42}>
               <div className={styles.autoWrapper4}>
                 <img
-                  src="../image/mkm77hkh-906kc8i.svg"
+                  src="../image/mkmaknzv-3n46lnq.svg"
                   className={styles.materialSymbolsHisto}
                 />
                 <p className={styles.tambahModulAplikasi}>Tambah Modul Aplikasi</p>
@@ -102,7 +102,7 @@ const Component = () => {
                 <div className={styles.roundedRectangle4} />
                 <p className={styles.statusModulPenting}>Status Modul (Penting)</p>
                 <img
-                  src="../image/mkm77hkh-6mhqcdr.svg"
+                  src="../image/mkmaknzv-4kjxhj6.svg"
                   className={styles.mingcuteNotification}
                 />
                 <div className={styles.rectangle45}>
@@ -119,7 +119,7 @@ const Component = () => {
         <p className={styles.history2}>History</p>
         <div className={styles.autoWrapper8}>
           <img
-            src="../image/mkm77hkh-hdl39bh.png"
+            src="../image/mkmaknzv-o7v9u23.png"
             className={styles.gridiconsDropdown}
           />
           <div className={styles.group12}>
@@ -130,7 +130,7 @@ const Component = () => {
                 </p>
               </div>
               <img
-                src="../image/mkm77hkh-sfzvqre.svg"
+                src="../image/mkmaknzv-99kyeu7.svg"
                 className={styles.gridiconsDropdown2}
               />
             </div>

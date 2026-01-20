@@ -10,28 +10,28 @@ const Component = () => {
         <div className={styles.halamanAdmin}>
           <div className={styles.rectangle5}>
             <img
-              src="../image/mkm6p9k2-cxmm7hk.png"
+              src="../image/mkmako3b-fnfxlm9.png"
               className={styles.logoPertaminaGasNega}
             />
             <div className={styles.autoWrapper}>
               <div className={styles.lineMdHomeTwotone2}>
                 <img
-                  src="../image/mkm6p9jw-pp3o8d4.svg"
+                  src="../image/mkmako34-beai9cz.svg"
                   className={styles.vector}
                 />
-                <img src="../image/mkm6p9jw-v5jnds1.svg" className={styles.group} />
+                <img src="../image/mkmako34-lkwws6c.svg" className={styles.group} />
                 <div className={styles.materialSymbolsHomeR2}>
                   <div className={styles.lineMdHomeTwotone}>
                     <img
-                      src="../image/mkm6p9jw-pp3o8d4.svg"
+                      src="../image/mkmako34-beai9cz.svg"
                       className={styles.vector}
                     />
                     <img
-                      src="../image/mkm6p9jw-v5jnds1.svg"
+                      src="../image/mkmako34-lkwws6c.svg"
                       className={styles.group}
                     />
                     <img
-                      src="../image/mkm6p9jw-4q72gk3.svg"
+                      src="../image/mkmako34-n7n61d9.svg"
                       className={styles.materialSymbolsHomeR}
                     />
                   </div>
@@ -42,7 +42,7 @@ const Component = () => {
             <div className={styles.autoWrapper2}>
               <div className={styles.materialSymbolsHisto2}>
                 <img
-                  src="../image/mkm6p9jw-aznmn2a.svg"
+                  src="../image/mkmako34-ls1e47i.svg"
                   className={styles.materialSymbolsHisto}
                 />
               </div>
@@ -51,13 +51,13 @@ const Component = () => {
             <div className={styles.rectangle16}>
               <p className={styles.managamentUser}>Managament User</p>
               <img
-                src="../image/mkm6p9jw-uwb72fe.svg"
+                src="../image/mkmako34-lee2h9s.svg"
                 className={styles.majesticonsUsers}
               />
               <div className={styles.rectangle18}>
                 <div className={styles.majesticonsUsers2}>
                   <img
-                    src="../image/mkm6p9jw-uwb72fe.svg"
+                    src="../image/mkmako34-lee2h9s.svg"
                     className={styles.materialSymbolsHisto}
                   />
                 </div>
@@ -67,7 +67,7 @@ const Component = () => {
             <div className={styles.autoWrapper3}>
               <div className={styles.vector3}>
                 <img
-                  src="../image/mkm6p9jx-b40sci4.svg"
+                  src="../image/mkmako34-aorgfm4.svg"
                   className={styles.vector2}
                 />
               </div>
@@ -81,13 +81,13 @@ const Component = () => {
               </p>
               <div className={styles.ionNotifcations}>
                 <img
-                  src="../image/mkm6p9jw-k5hdgif.svg"
+                  src="../image/mkmako34-karf6ve.svg"
                   className={styles.frame1}
                 />
               </div>
               <p className={styles.admin}>Admin</p>
               <img
-                src="../image/mkm6p9jw-pnqfdbx.svg"
+                src="../image/mkmako34-vcnuv8t.svg"
                 className={styles.ggProfile}
               />
             </div>
@@ -127,26 +127,26 @@ const Component = () => {
                   <p className={styles.mahasiswa}>Mahasiswa</p>
                   <p className={styles.manager}>Manager</p>
                   <img
-                    src="../image/mkm6p9jw-9bf78ar.svg"
+                    src="../image/mkmako34-g5vb1ni.svg"
                     className={styles.mdiPencil}
                   />
                   <img
-                    src="../image/mkm6p9jw-d8dhpvv.svg"
+                    src="../image/mkmako34-gccpcfy.svg"
                     className={styles.vector4}
                   />
                   <p className={styles.izin}>izin</p>
                   <img
-                    src="../image/mkm6p9jw-ciyedb9.svg"
+                    src="../image/mkmako34-6y2rva5.svg"
                     className={styles.vector5}
                   />
                   <img
-                    src="../image/mkm6p9jw-lvde6g7.svg"
+                    src="../image/mkmako34-te3b4h1.svg"
                     className={styles.delete}
                   />
                   <div className={styles.autoWrapper8}>
                     <p className={styles.active}>Active</p>
                     <img
-                      src="../image/mkm6p9jw-aojb3rj.svg"
+                      src="../image/mkmako34-hjxg6tg.svg"
                       className={styles.group2}
                     />
                   </div>
@@ -161,26 +161,26 @@ const Component = () => {
                   <p className={styles.mahasiswa}>Mahasiswa</p>
                   <p className={styles.manager}>Manager</p>
                   <img
-                    src="../image/mkm6p9jw-9bf78ar.svg"
+                    src="../image/mkmako34-g5vb1ni.svg"
                     className={styles.mdiPencil}
                   />
                   <img
-                    src="../image/mkm6p9jw-d8dhpvv.svg"
+                    src="../image/mkmako34-gccpcfy.svg"
                     className={styles.vector6}
                   />
                   <p className={styles.izin2}>izin</p>
                   <img
-                    src="../image/mkm6p9jw-ciyedb9.svg"
+                    src="../image/mkmako34-6y2rva5.svg"
                     className={styles.vector7}
                   />
                   <img
-                    src="../image/mkm6p9jw-lvde6g7.svg"
+                    src="../image/mkmako34-te3b4h1.svg"
                     className={styles.delete}
                   />
                   <div className={styles.autoWrapper9}>
                     <p className={styles.active2}>Active</p>
                     <img
-                      src="../image/mkm6p9jw-t07yn3y.svg"
+                      src="../image/mkmako34-tjwgl5q.svg"
                       className={styles.group3}
                     />
                   </div>

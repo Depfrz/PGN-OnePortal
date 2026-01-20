@@ -9,18 +9,21 @@ const Component = () => {
         <div className={styles.rectangle18}>
           <div className={styles.rectangle13}>
             <img
-              src="../image/mkm7867k-oa7zxtl.png"
+              src="https://via.placeholder.com/200x60"
               className={styles.logoPertaminaGasNega}
             />
             <div className={styles.autoWrapper}>
               <div className={styles.lineMdHomeTwotone}>
                 <img
-                  src="../image/mkm7867h-vhddcnn.svg"
+                  src="https://via.placeholder.com/29x38"
                   className={styles.vector}
                 />
-                <img src="../image/mkm7867h-kw5etzf.svg" className={styles.group} />
                 <img
-                  src="../image/mkm7867h-egugncr.svg"
+                  src="https://via.placeholder.com/42x41"
+                  className={styles.group}
+                />
+                <img
+                  src="https://via.placeholder.com/50x50"
                   className={styles.materialSymbolsHomeR}
                 />
               </div>
@@ -28,14 +31,14 @@ const Component = () => {
             </div>
             <div className={styles.autoWrapper2}>
               <img
-                src="../image/mkm7867h-24okov1.svg"
+                src="https://via.placeholder.com/50x50"
                 className={styles.materialSymbolsHisto}
               />
               <p className={styles.history}>History</p>
             </div>
             <div className={styles.autoWrapper3}>
               <img
-                src="../image/mkm7867h-lw1v6zx.svg"
+                src="https://via.placeholder.com/50x50"
                 className={styles.materialSymbolsHisto}
               />
               <p className={styles.managamentUser}>Managament User</p>
@@ -44,7 +47,7 @@ const Component = () => {
               <p className={styles.tambahModulSystem}>Tambah Modul / System</p>
               <div className={styles.rectangle17}>
                 <img
-                  src="../image/mkm7867h-rcf2ivq.svg"
+                  src="https://via.placeholder.com/50x50"
                   className={styles.materialSymbolsHisto}
                 />
                 <p className={styles.integrasiSistem}>Integrasi Sistem</p>
@@ -58,12 +61,15 @@ const Component = () => {
               </p>
               <div className={styles.ionNotifcations}>
                 <img
-                  src="../image/mkm7867h-mgy2g4g.svg"
+                  src="https://via.placeholder.com/224x59"
                   className={styles.frame1}
                 />
               </div>
               <p className={styles.admin}>Admin</p>
-              <img src="../image/mkm7867h-gj2os5o.svg" className={styles.group2} />
+              <img
+                src="https://via.placeholder.com/46x46"
+                className={styles.group2}
+              />
             </div>
             <div className={styles.rectangle42}>
               <p className={styles.manajemenModulAplika}>
@@ -79,7 +85,7 @@ const Component = () => {
                 <div className={styles.rectangle44}>
                   <p className={styles.cariModul}>Cari Modul...</p>
                   <img
-                    src="../image/mkm7867h-0r7gmus.svg"
+                    src="https://via.placeholder.com/48x48"
                     className={styles.icSharpSearch}
                   />
                 </div>
@@ -105,7 +111,7 @@ const Component = () => {
                     <div className={styles.rectangle54}>
                       <p className={styles.visitSite}>Visit site!</p>
                       <img
-                        src="../image/mkm7867h-urlkpbl.svg"
+                        src="https://via.placeholder.com/16x16"
                         className={styles.iconParkGoOn}
                       />
                     </div>
@@ -132,7 +138,7 @@ const Component = () => {
                     <div className={styles.rectangle54}>
                       <p className={styles.visitSite}>Visit site!</p>
                       <img
-                        src="../image/mkm7867h-4cmvewn.svg"
+                        src="https://via.placeholder.com/16x16"
                         className={styles.iconParkGoOn}
                       />
                     </div>
@@ -159,7 +165,7 @@ const Component = () => {
                     <div className={styles.rectangle54}>
                       <p className={styles.visitSite}>Visit site!</p>
                       <img
-                        src="../image/mkm7867h-ntg149w.svg"
+                        src="https://via.placeholder.com/16x16"
                         className={styles.iconParkGoOn}
                       />
                     </div>
@@ -167,19 +173,19 @@ const Component = () => {
                 </div>
                 <div className={styles.ellipse1}>
                   <img
-                    src="../image/mkm7867h-u98zgk6.svg"
+                    src="https://via.placeholder.com/25x25"
                     className={styles.vector2}
                   />
                 </div>
                 <div className={styles.ellipse2}>
                   <img
-                    src="../image/mkm7867h-epre27d.svg"
+                    src="https://via.placeholder.com/25x25"
                     className={styles.vector2}
                   />
                 </div>
                 <div className={styles.ellipse3}>
                   <img
-                    src="../image/mkm7867h-90wvra5.svg"
+                    src="https://via.placeholder.com/25x25"
                     className={styles.vector2}
                   />
                 </div>

@@ -9,18 +9,18 @@ const Component = () => {
         <div className={styles.rectangle18}>
           <div className={styles.rectangle13}>
             <img
-              src="../image/mkm781so-pmt2kup.png"
+              src="../image/mkmakodd-ar115kb.png"
               className={styles.logoPertaminaGasNega}
             />
             <div className={styles.autoWrapper}>
               <div className={styles.lineMdHomeTwotone}>
                 <img
-                  src="../image/mkm781sh-k6nmnl0.svg"
+                  src="../image/mkmakoda-o5ajp4f.svg"
                   className={styles.vector}
                 />
-                <img src="../image/mkm781sh-fovex6g.svg" className={styles.group} />
+                <img src="../image/mkmakoda-0w25tpi.svg" className={styles.group} />
                 <img
-                  src="../image/mkm781sh-8wqi9r4.svg"
+                  src="../image/mkmakoda-ijprcua.svg"
                   className={styles.materialSymbolsHomeR}
                 />
               </div>
@@ -28,14 +28,14 @@ const Component = () => {
             </div>
             <div className={styles.autoWrapper2}>
               <img
-                src="../image/mkm781sh-4wi28ef.svg"
+                src="../image/mkmakoda-bxbrg0o.svg"
                 className={styles.materialSymbolsHisto}
               />
               <p className={styles.history}>History</p>
             </div>
             <div className={styles.autoWrapper3}>
               <img
-                src="../image/mkm781si-7dn4ln9.svg"
+                src="../image/mkmakoda-7g58guq.svg"
                 className={styles.materialSymbolsHisto}
               />
               <p className={styles.managamentUser}>Managament User</p>
@@ -44,7 +44,7 @@ const Component = () => {
               <p className={styles.tambahModulSystem}>Tambah Modul / System</p>
               <div className={styles.rectangle17}>
                 <img
-                  src="../image/mkm781si-oa6vc8g.svg"
+                  src="../image/mkmakoda-uzdegnz.svg"
                   className={styles.materialSymbolsHisto}
                 />
                 <p className={styles.integrasiSistem}>Integrasi Sistem</p>
@@ -58,12 +58,12 @@ const Component = () => {
               </p>
               <div className={styles.ionNotifcations}>
                 <img
-                  src="../image/mkm781si-wvcov02.svg"
+                  src="../image/mkmakoda-z5npi87.svg"
                   className={styles.frame1}
                 />
               </div>
               <p className={styles.admin}>Admin</p>
-              <img src="../image/mkm781sh-gv2e8xb.svg" className={styles.group2} />
+              <img src="../image/mkmakoda-6zj5ji7.svg" className={styles.group2} />
             </div>
             <div className={styles.rectangle42}>
               <p className={styles.manajemenModulAplika}>
@@ -79,7 +79,7 @@ const Component = () => {
                 <div className={styles.rectangle44}>
                   <p className={styles.cariModul}>Cari Modul...</p>
                   <img
-                    src="../image/mkm781si-7gx9trh.svg"
+                    src="../image/mkmakoda-tagrxez.svg"
                     className={styles.icSharpSearch}
                   />
                 </div>
@@ -104,14 +104,14 @@ const Component = () => {
                     <div className={styles.rectangle54}>
                       <p className={styles.visitSite}>Visit site!</p>
                       <img
-                        src="../image/mkm781si-mqx7z9h.svg"
+                        src="../image/mkmakoda-h6hzcpy.svg"
                         className={styles.iconParkGoOn}
                       />
                     </div>
                   </div>
                   <div className={styles.ellipse3}>
                     <img
-                      src="../image/mkm781si-k048zhc.svg"
+                      src="../image/mkmakodb-40q5p7k.svg"
                       className={styles.vector2}
                     />
                   </div>
@@ -135,14 +135,14 @@ const Component = () => {
                     <div className={styles.rectangle54}>
                       <p className={styles.visitSite}>Visit site!</p>
                       <img
-                        src="../image/mkm781si-zgc1vv0.svg"
+                        src="../image/mkmakoda-a168tjw.svg"
                         className={styles.iconParkGoOn}
                       />
                     </div>
                   </div>
                   <div className={styles.ellipse3}>
                     <img
-                      src="../image/mkm781si-k048zhc.svg"
+                      src="../image/mkmakodb-40q5p7k.svg"
                       className={styles.vector2}
                     />
                   </div>
@@ -166,14 +166,14 @@ const Component = () => {
                     <div className={styles.rectangle54}>
                       <p className={styles.visitSite}>Visit site!</p>
                       <img
-                        src="../image/mkm781si-gdc55ca.svg"
+                        src="../image/mkmakoda-davgonc.svg"
                         className={styles.iconParkGoOn}
                       />
                     </div>
                   </div>
                   <div className={styles.ellipse1}>
                     <img
-                      src="../image/mkm781si-k048zhc.svg"
+                      src="../image/mkmakodb-40q5p7k.svg"
                       className={styles.vector2}
                     />
                   </div>

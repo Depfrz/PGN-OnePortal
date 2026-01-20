@@ -9,18 +9,18 @@ const Component = () => {
         <div className={styles.rectangle18}>
           <div className={styles.rectangle13}>
             <img
-              src="../image/mkm77p62-3pyhq5q.png"
+              src="../image/mkmako2f-ai2qw34.png"
               className={styles.logoPertaminaGasNega}
             />
             <div className={styles.autoWrapper}>
               <div className={styles.lineMdHomeTwotone}>
                 <img
-                  src="../image/mkm77p61-9v6ti0p.svg"
+                  src="../image/mkmako2d-y8xpump.svg"
                   className={styles.vector}
                 />
-                <img src="../image/mkm77p61-xkkh1wl.svg" className={styles.group} />
+                <img src="../image/mkmako2d-zysfpy2.svg" className={styles.group} />
                 <img
-                  src="../image/mkm77p61-q6b4a8h.svg"
+                  src="../image/mkmako2d-5c2blwo.svg"
                   className={styles.materialSymbolsHomeR}
                 />
               </div>
@@ -28,14 +28,14 @@ const Component = () => {
             </div>
             <div className={styles.autoWrapper2}>
               <img
-                src="../image/mkm77p61-xv630bg.svg"
+                src="../image/mkmako2d-wbyibe4.svg"
                 className={styles.materialSymbolsHisto}
               />
               <p className={styles.history}>History</p>
             </div>
             <div className={styles.autoWrapper3}>
               <img
-                src="../image/mkm77p61-prjbmdt.svg"
+                src="../image/mkmako2d-lqrhzdl.svg"
                 className={styles.materialSymbolsHisto}
               />
               <p className={styles.managamentUser}>Managament User</p>
@@ -44,7 +44,7 @@ const Component = () => {
               <p className={styles.tambahModulSystem}>Tambah Modul / System</p>
               <div className={styles.rectangle17}>
                 <img
-                  src="../image/mkm77p61-m5q3kut.svg"
+                  src="../image/mkmako2d-pnxmogw.svg"
                   className={styles.materialSymbolsHisto}
                 />
                 <p className={styles.integrasiSistem}>Integrasi Sistem</p>
@@ -58,12 +58,12 @@ const Component = () => {
               </p>
               <div className={styles.ionNotifcations}>
                 <img
-                  src="../image/mkm77p61-v7fo0nl.svg"
+                  src="../image/mkmako2d-aet9413.svg"
                   className={styles.frame1}
                 />
               </div>
               <p className={styles.admin}>Admin</p>
-              <img src="../image/mkm77p61-orzuba9.svg" className={styles.group2} />
+              <img src="../image/mkmako2d-9hpnsj0.svg" className={styles.group2} />
             </div>
             <div className={styles.rectangle42}>
               <p className={styles.manajemenModulAplika}>
@@ -79,7 +79,7 @@ const Component = () => {
                 <div className={styles.rectangle44}>
                   <p className={styles.cariModul}>Cari Modul...</p>
                   <img
-                    src="../image/mkm77p61-p746qww.svg"
+                    src="../image/mkmako2d-mnppcfz.svg"
                     className={styles.icSharpSearch}
                   />
                 </div>
@@ -102,7 +102,7 @@ const Component = () => {
                   <div className={styles.rectangle54}>
                     <p className={styles.visitSite}>Visit site!</p>
                     <img
-                      src="../image/mkm77p61-0s2qepx.svg"
+                      src="../image/mkmako2d-duz0cjb.svg"
                       className={styles.iconParkGoOn}
                     />
                   </div>
