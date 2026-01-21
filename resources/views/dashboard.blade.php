@@ -1,7 +1,7 @@
 <x-dashboard-layout>
     <div class="bg-white dark:bg-gray-800 rounded-[10px] p-6 min-h-[800px] transition-colors duration-300">
         <!-- Welcome Message -->
-        <h1 class="text-lg lg:text-xl font-semibold text-black dark:text-white mb-8">Selamat Datang, {{ Auth::user()->name ?? 'Admin' }}.</h1>
+        <h1 class="text-lg lg:text-xl font-semibold text-black dark:text-white mb-10">Selamat Datang, {{ Auth::user()->name ?? 'Admin' }}.</h1>
 
         <!-- Cards Grid -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -11,7 +11,10 @@
             @endphp
 
             @forelse($modules as $index => $module)
-                <a href="{{ $module->url }}" class="flex flex-col items-center text-center group transition-transform hover:scale-105 duration-200">
+                <a href="{{ $module->url }}" 
+                   target="{{ ($module->tab_type === 'new' || Str::startsWith($module->url, ['http://', 'https://'])) ? '_blank' : '_self' }}"
+                   rel="{{ ($module->tab_type === 'new' || Str::startsWith($module->url, ['http://', 'https://'])) ? 'noopener noreferrer' : '' }}"
+                   class="flex flex-col items-center text-center group transition-transform hover:scale-105 duration-200">
                     <!-- Badge -->
                     <div style="background-color: {{ $colors[$index % count($colors)] }}" class="text-white rounded-[15px] px-6 py-2 mb-4 flex items-center shadow-md min-w-[180px] justify-center z-10">
                         <!-- Dynamic Icon based on module icon name or default -->

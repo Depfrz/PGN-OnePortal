@@ -13,8 +13,13 @@ class DashboardController extends Controller
         /** @var \App\Models\User $user */
         $user = Auth::user();
 
+        // Built-in features to exclude from the main dashboard grid as they are in the sidebar
+        $excludedModules = ['Dashboard', 'Integrasi Sistem', 'Management User', 'Data History', 'History'];
+
         if ($user->hasRole(['Supervisor', 'Admin'])) {
-            $modules = Module::where('status', true)->get();
+            $modules = Module::where('status', true)
+                ->whereNotIn('name', $excludedModules)
+                ->get();
             return view('dashboard', compact('modules'));
         }
         
@@ -27,6 +32,7 @@ class DashboardController extends Controller
         if ($assignedModuleIds->isNotEmpty()) {
             $modules = Module::whereIn('id', $assignedModuleIds)
                 ->where('status', true)
+                ->whereNotIn('name', $excludedModules)
                 ->get();
         } 
         // Fallback for standard users with no configured access (show none)

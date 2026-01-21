@@ -37,7 +37,7 @@
                     <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-blue-600/20">
                         P
                     </div>
-                    <span class="font-bold text-xl tracking-tight text-slate-900">PGN <span class="text-blue-600">DataLens</span></span>
+                    <span class="font-bold text-xl tracking-tight text-slate-900">PGN <span class="text-blue-600">One Portal</span></span>
                 </div>
                 
                 <div class="flex items-center gap-4">

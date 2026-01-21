@@ -26,6 +26,25 @@
         } else {
             document.documentElement.classList.remove('dark')
         }
+
+        // Global External Link Handler
+        document.addEventListener('DOMContentLoaded', function() {
+            document.body.addEventListener('click', function(e) {
+                // Find closest anchor tag if click was on a child element
+                const anchor = e.target.closest('a');
+                
+                if (anchor && anchor.href) {
+                    const url = new URL(anchor.href, window.location.origin);
+                    
+                    // Check if hostname is different from current site
+                    if (url.hostname !== window.location.hostname) {
+                        // It is an external link
+                        anchor.target = '_blank';
+                        anchor.rel = 'noopener noreferrer';
+                    }
+                }
+            });
+        });
     </script>
 </head>
 <body class="font-sans antialiased bg-[#d9d9d9] dark:bg-gray-900 transition-colors duration-300">
@@ -44,7 +63,7 @@
 
             <!-- Navigation -->
             <nav class="flex-1 px-4 space-y-4 mt-4">
-                <!-- Beranda -->
+                <!-- Dashboard -->
                 <a href="{{ route('dashboard') }}" class="flex items-center px-4 py-3 rounded-xl transition-colors group {{ request()->routeIs('dashboard') ? 'bg-white dark:bg-gray-700 shadow-sm' : 'hover:bg-white/20 dark:hover:bg-gray-700' }}">
                     <div class="w-8 h-8 flex items-center justify-center mr-4">
                         <!-- Home Icon -->
@@ -53,10 +72,10 @@
                             <path d="M12 5.432l8.159 8.159c.03.03.06.058.091.086v6.198c0 1.035-.84 1.875-1.875 1.875H15a.75.75 0 01-.75-.75v-4.5a.75.75 0 00-.75-.75h-3a.75.75 0 00-.75.75V21a.75.75 0 01-.75.75H5.625a1.875 1.875 0 01-1.875-1.875v-6.198a2.29 2.29 0 00.091-.086L12 5.43z" />
                         </svg>
                     </div>
-                    <span class="text-sm font-bold text-black dark:text-white group-hover:text-black dark:group-hover:text-white transition-colors">Beranda</span>
+                    <span class="text-sm font-bold text-black dark:text-white group-hover:text-black dark:group-hover:text-white transition-colors">Dashboard</span>
                 </a>
 
-                <!-- History -->
+                <!-- Data History -->
                 @can('view module history')
                 <a href="{{ route('history') }}" class="flex items-center px-4 py-3 rounded-xl transition-colors group {{ request()->routeIs('history') ? 'bg-white dark:bg-gray-700 shadow-sm' : 'hover:bg-white/20 dark:hover:bg-gray-700' }}">
                     <div class="w-8 h-8 flex items-center justify-center mr-4">
@@ -65,7 +84,7 @@
                             <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zM12.75 6a.75.75 0 00-1.5 0v6c0 .414.336.75.75.75h4.5a.75.75 0 000-1.5h-3.75V6z" clip-rule="evenodd" />
                         </svg>
                     </div>
-                    <span class="text-sm font-bold text-black dark:text-white group-hover:text-black dark:group-hover:text-white transition-colors">History</span>
+                    <span class="text-sm font-bold text-black dark:text-white group-hover:text-black dark:group-hover:text-white transition-colors">Data History</span>
                 </a>
                 @endcan
 
