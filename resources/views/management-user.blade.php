@@ -406,21 +406,23 @@
                         </svg>
                     </button>
                 </div>
-                <div class="space-y-4">
-                    <p class="text-sm text-gray-600 dark:text-gray-300 mb-2">Pilih role untuk user <span class="font-semibold" x-text="selectedUser?.name"></span>:</p>
-                    <div class="grid grid-cols-2 gap-4">
-                        <template x-for="role in availableRoles" :key="role">
-                            <label class="flex items-center p-4 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-200 dark:hover:border-blue-800 transition-colors gap-4">
-                                <input type="radio" name="role" :value="role" x-model="selectedUser.role" class="w-5 h-5 text-blue-600 border-gray-300 focus:ring-blue-500">
-                                <span class="text-base font-medium text-gray-700 dark:text-gray-300" x-text="role"></span>
-                            </label>
-                        </template>
+                <template x-if="selectedUser">
+                    <div class="space-y-4">
+                        <p class="text-sm text-gray-600 dark:text-gray-300 mb-2">Pilih role untuk user <span class="font-semibold" x-text="selectedUser.name"></span>:</p>
+                        <div class="grid grid-cols-2 gap-4">
+                            <template x-for="role in availableRoles" :key="role">
+                                <label class="flex items-center p-4 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-200 dark:hover:border-blue-800 transition-colors gap-4">
+                                    <input type="radio" name="role" :value="role" x-model="selectedUser.role" class="w-5 h-5 text-blue-600 border-gray-300 focus:ring-blue-500">
+                                    <span class="text-base font-medium text-gray-700 dark:text-gray-300" x-text="role"></span>
+                                </label>
+                            </template>
+                        </div>
+                        <div class="flex justify-end space-x-3 mt-8">
+                            <button @click="editRoleModal = false" class="px-5 py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 font-medium transition-colors">Batal</button>
+                            <button @click="saveRole()" style="background-color: #2563eb !important; color: white !important;" class="px-5 py-2.5 !bg-blue-600 !text-white rounded-lg hover:!bg-blue-700 font-medium shadow-md hover:shadow-lg transition-all">Simpan</button>
+                        </div>
                     </div>
-                    <div class="flex justify-end space-x-3 mt-8">
-                        <button @click="editRoleModal = false" class="px-5 py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 font-medium transition-colors">Batal</button>
-                        <button @click="saveRole()" style="background-color: #2563eb !important; color: white !important;" class="px-5 py-2.5 !bg-blue-600 !text-white rounded-lg hover:!bg-blue-700 font-medium shadow-md hover:shadow-lg transition-all">Simpan</button>
-                    </div>
-                </div>
+                </template>
             </div>
         </div>
 

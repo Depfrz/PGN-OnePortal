@@ -55,6 +55,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/history', [HistoryController::class, 'index'])->name('history');
 
     Route::get('/list-pengawasan', [ListPengawasanController::class, 'index'])->name('list-pengawasan.index');
+    Route::post('/list-pengawasan', [ListPengawasanController::class, 'store'])
+        ->name('list-pengawasan.store');
+    Route::patch('/list-pengawasan/{id}/keterangan', [ListPengawasanController::class, 'updateKeterangan'])
+        ->name('list-pengawasan.update-keterangan');
+    Route::delete('/list-pengawasan/{id}', [ListPengawasanController::class, 'destroy'])
+        ->name('list-pengawasan.destroy');
+    Route::patch('/list-pengawasan/keterangan/rename', [ListPengawasanController::class, 'renameOption'])
+        ->name('list-pengawasan.keterangan.rename');
+    Route::delete('/list-pengawasan/keterangan', [ListPengawasanController::class, 'deleteOption'])
+        ->name('list-pengawasan.keterangan.delete');
 
     // Notification Routes
     Route::get('/notifications', [App\Http\Controllers\NotificationController::class, 'index'])->name('notifications.index');
