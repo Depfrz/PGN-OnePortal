@@ -160,7 +160,7 @@
     <footer class="bg-white py-12 border-t border-slate-200">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-6">
             <div class="text-slate-500 text-sm">
-                &copy; {{ date('Y') }} PGN DataLens. All rights reserved.
+                &copy; {{ date('Y') }} PGN OnePortal. All rights reserved.
             </div>
             <div class="flex gap-6">
                 <a href="#" class="text-slate-400 hover:text-blue-600 transition-colors">Privacy Policy</a>
