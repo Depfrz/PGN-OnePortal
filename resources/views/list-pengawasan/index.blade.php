@@ -5,11 +5,14 @@
         editKeteranganModal: false,
         deleteModal: false,
         renameModal: false,
+        deleteKeteranganModal: false,
         selectedPengawas: null,
         selectedKeterangan: [],
         newLabel: '',
         renameOld: '',
         renameNew: '',
+        deleteKeteranganName: '',
+        toast: { show: false, message: '', timeoutId: null },
         editingId: null,
         editPengawas: { nama: '', divisi: '' },
         statusMenu: { open: false, x: 0, y: 0, item: null },
@@ -26,6 +29,12 @@
             if (!this.options.includes(label)) this.options.push(label);
             if (!this.newPengawas.keterangan.includes(label)) this.newPengawas.keterangan.push(label);
             this.newPengawas.new_keterangan = '';
+        },
+        showToast(message) {
+            this.toast.message = message;
+            this.toast.show = true;
+            if (this.toast.timeoutId) clearTimeout(this.toast.timeoutId);
+            this.toast.timeoutId = setTimeout(() => { this.toast.show = false; }, 2200);
         },
         async savePengawas() {
             try {
@@ -53,6 +62,7 @@
                         keterangan: [...this.newPengawas.keterangan]
                     });
                     this.addModal = false;
+                    this.showToast('Pengawasan berhasil ditambahkan');
                 } else {
                     alert('Gagal menambah pengawas');
                 }
@@ -191,12 +201,27 @@
                     const idx = this.items.findIndex(i => i.id === this.selectedPengawas.id);
                     if (idx !== -1) this.items[idx].keterangan = [...this.selectedKeterangan];
                     this.editKeteranganModal = false;
+                    this.showToast('Keterangan berhasil diperbarui');
                 } else {
                     alert('Gagal menyimpan keterangan');
                 }
             } catch (e) {
                 console.error(e);
                 alert('Terjadi kesalahan sistem');
+            }
+        },
+        openDeleteKeterangan(name) {
+            this.deleteKeteranganName = name;
+            this.deleteKeteranganModal = true;
+        },
+        async confirmDeleteKeterangan() {
+            const name = this.deleteKeteranganName;
+            if (!name) return;
+            const ok = await this.deleteOption(name);
+            if (ok) {
+                this.deleteKeteranganModal = false;
+                this.deleteKeteranganName = '';
+                this.showToast('Keterangan berhasil dihapus');
             }
         },
         async renameOption(oldName, newName) {
@@ -237,13 +262,16 @@
                     this.options = this.options.filter(o => o !== name);
                     this.selectedKeterangan = this.selectedKeterangan.filter(k => k !== name);
                     this.items = this.items.map(it => ({...it, keterangan: it.keterangan.filter(k => k !== name)}));
+                    return true;
                 } else {
                     const d = await response.json().catch(() => ({}));
                     alert(d.message || 'Gagal menghapus keterangan');
+                    return false;
                 }
             } catch (e) {
                 console.error(e);
                 alert('Terjadi kesalahan sistem');
+                return false;
             }
         },
         openDelete(item) {
@@ -262,6 +290,7 @@
                 if (response.ok) {
                     this.items = this.items.filter(i => i.id !== this.selectedPengawas.id);
                     this.deleteModal = false;
+                    this.showToast('Pengawas berhasil dihapus');
                 } else {
                     alert('Gagal menghapus pengawas');
                 }
@@ -271,6 +300,27 @@
             }
         }
     }" class="p-6">
+        <template x-teleport="body">
+            <div x-show="toast.show"
+                 x-transition:enter="transition ease-out duration-200"
+                 x-transition:enter-start="opacity-0 translate-y-2"
+                 x-transition:enter-end="opacity-100 translate-y-0"
+                 x-transition:leave="transition ease-in duration-150"
+                 x-transition:leave-start="opacity-100 translate-y-0"
+                 x-transition:leave-end="opacity-0 translate-y-2"
+                 class="fixed top-5 right-5 z-[9999]"
+                 style="display: none;">
+                <div class="flex items-center gap-3 rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-2xl px-4 py-3">
+                    <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-200">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-5 w-5">
+                            <path fill-rule="evenodd" d="M16.704 4.294a.75.75 0 01.002 1.06l-8.25 8.25a.75.75 0 01-1.06 0l-3.75-3.75a.75.75 0 011.06-1.06l3.22 3.22 7.72-7.72a.75.75 0 011.058 0z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    <div class="text-sm font-semibold text-gray-900 dark:text-gray-100" x-text="toast.message"></div>
+                </div>
+            </div>
+        </template>
+
         <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
             <h2 class="text-xl font-bold text-gray-800 dark:text-white">List Pengawasan</h2>
             <div class="flex items-center gap-3">
@@ -515,7 +565,7 @@
                                             <path d="M21.731 2.269a2.625 2.625 0 00-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 000-3.712zM19.513 8.199l-3.712-3.712-12.15 12.15a5.25 5.25 0 00-1.32 2.214l-.8 2.685a.75.75 0 00.933.933l2.685-.8a5.25 5.25 0 002.214-1.32L19.513 8.2z" />
                                         </svg>
                                     </button>
-                                    <button @click="if(confirm('Hapus keterangan ini?')){ deleteOption(opt); }" class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors dark:hover:bg-red-900/20" title="Hapus">
+                                    <button @click="openDeleteKeterangan(opt)" class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors dark:hover:bg-red-900/20" title="Hapus">
                                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
                                         </svg>
@@ -591,6 +641,33 @@
                     <div class="flex justify-end space-x-3 mt-6">
                         <button @click="deleteModal = false" class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Batal</button>
                         <button @click="deletePengawas()" class="px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium shadow-md hover:shadow-lg transition-all">Ya, Hapus</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Delete Keterangan Modal -->
+        <div x-show="deleteKeteranganModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm transition-opacity" style="display: none;">
+            <div class="bg-white rounded-xl p-6 w-[480px] shadow-2xl transform transition-all dark:bg-gray-800">
+                <div class="flex items-center space-x-4 mb-6">
+                    <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 dark:bg-red-900/30">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-600 dark:text-red-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold text-gray-800 dark:text-white">Hapus Keterangan</h2>
+                        <p class="text-sm text-gray-500 mt-1 dark:text-gray-400">Tindakan ini tidak dapat dibatalkan.</p>
+                    </div>
+                </div>
+                <div class="space-y-5">
+                    <p class="text-sm text-gray-600 dark:text-gray-300">Apakah Anda yakin ingin menghapus keterangan berikut?</p>
+                    <div class="bg-red-50 border border-red-100 rounded-lg p-4 dark:bg-red-900/20 dark:border-red-900/40">
+                        <div class="font-semibold text-gray-900 dark:text-white" x-text="deleteKeteranganName"></div>
+                    </div>
+                    <div class="flex justify-end space-x-3 mt-6">
+                        <button @click="deleteKeteranganModal = false; deleteKeteranganName='';" class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Batal</button>
+                        <button @click="confirmDeleteKeterangan()" class="px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium shadow-md hover:shadow-lg transition-all">Ya, Hapus</button>
                     </div>
                 </div>
             </div>
