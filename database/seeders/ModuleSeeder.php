@@ -47,6 +47,13 @@ class ModuleSeeder extends Seeder
                 'icon' => 'clock',
                 'status' => true,
             ],
+            [
+                'name' => 'List Pengawasan',
+                'slug' => 'list-pengawasan',
+                'url' => '/list-pengawasan',
+                'icon' => 'clipboard',
+                'status' => true,
+            ],
             // Business Modules
             [
                 'name' => 'HCM SIP-PGN',

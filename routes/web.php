@@ -4,6 +4,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\IntegrasiSistemController;
 use App\Http\Controllers\ManagementUserController;
+use App\Http\Controllers\ListPengawasanController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\HistoryController;
 
@@ -52,6 +53,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     Route::get('/history', [HistoryController::class, 'index'])->name('history');
+
+    Route::get('/list-pengawasan', [ListPengawasanController::class, 'index'])->name('list-pengawasan.index');
 
     // Notification Routes
     Route::get('/notifications', [App\Http\Controllers\NotificationController::class, 'index'])->name('notifications.index');

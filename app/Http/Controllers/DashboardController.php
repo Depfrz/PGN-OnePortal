@@ -12,6 +12,11 @@ class DashboardController extends Controller
     {
         /** @var \App\Models\User $user */
         $user = Auth::user();
+
+        if ($user->hasRole(['Supervisor', 'Admin'])) {
+            $modules = Module::where('status', true)->get();
+            return view('dashboard', compact('modules'));
+        }
         
         // Get module IDs from module_access where can_read is true
         $assignedModuleIds = \App\Models\ModuleAccess::where('user_id', $user->id)
@@ -24,10 +29,6 @@ class DashboardController extends Controller
                 ->where('status', true)
                 ->get();
         } 
-        // Fallback for Admin/Supervisor if NO access rights are configured (show all)
-        elseif ($user->hasRole(['Supervisor', 'Admin'])) {
-            $modules = Module::where('status', true)->get();
-        }
         // Fallback for standard users with no configured access (show none)
         else {
             $modules = collect();
