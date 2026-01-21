@@ -12,6 +12,7 @@
         renameNew: '',
         editingId: null,
         editPengawas: { nama: '', divisi: '' },
+        statusMenu: { open: false, x: 0, y: 0, item: null },
         newPengawas: { nama: '', divisi: '', status: 'On Progress', keterangan: [], new_keterangan: '' },
         items: {{ Js::from($items) }},
         options: {{ Js::from($options) }},
@@ -82,6 +83,31 @@
                 console.error(e);
                 alert('Terjadi kesalahan sistem');
             }
+        },
+        statusMeta(status) {
+            if (status === 'OFF') return { label: 'OFF', cls: 'bg-red-600 text-white hover:bg-red-700' };
+            if (status === 'Done') return { label: 'Done', cls: 'bg-green-600 text-white hover:bg-green-700' };
+            return { label: 'On Progress', cls: 'bg-amber-600 text-white hover:bg-amber-700' };
+        },
+        openStatusMenu(e, item) {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const menuWidth = 176;
+            const menuHeight = 156;
+            let x = rect.left;
+            let y = rect.bottom + 8;
+
+            const maxX = window.innerWidth - menuWidth - 12;
+            if (x > maxX) x = maxX;
+            if (x < 12) x = 12;
+
+            const maxY = window.innerHeight - menuHeight - 12;
+            if (y > maxY) y = rect.top - menuHeight - 8;
+            if (y < 12) y = 12;
+
+            this.statusMenu = { open: true, x, y, item };
+        },
+        closeStatusMenu() {
+            this.statusMenu = { open: false, x: 0, y: 0, item: null };
         },
         startEdit(item) {
             this.editingId = item.id;
@@ -274,10 +300,11 @@
                 <div class="col-span-2 text-center">Keterangan</div>
             </div>
 
-            <div class="divide-y divide-gray-100 dark:divide-gray-700">
-                <template x-for="item in items.filter(i => i.nama.toLowerCase().includes(search.toLowerCase()))" :key="item.id">
-                    <div class="px-6 py-6">
-                        <div class="grid grid-cols-12 gap-4 items-start">
+            <div class="max-h-[60vh] overflow-y-auto custom-scrollbar">
+                <div class="divide-y divide-gray-100 dark:divide-gray-700">
+                    <template x-for="item in items.filter(i => i.nama.toLowerCase().includes(search.toLowerCase()))" :key="item.id">
+                        <div class="px-6 py-6">
+                            <div class="grid grid-cols-12 gap-4 items-start">
                             <div class="col-span-3">
                                 <div class="flex items-start gap-2">
                                     <div class="min-w-0 flex-1">
@@ -324,28 +351,19 @@
                             </div>
 
                             <div class="col-span-2 text-gray-700 text-sm dark:text-gray-300" x-text="item.tanggal"></div>
-                            <div class="col-span-2">
-                                <div class="flex flex-wrap items-center rounded-lg border border-gray-200 bg-white p-1 shadow-sm dark:border-gray-700 dark:bg-gray-900 gap-1">
+                                <div class="col-span-2">
                                     <button
                                         type="button"
-                                        class="px-2.5 py-1 text-[11px] font-semibold rounded-md transition-colors"
-                                        :class="item.status === 'OFF' ? 'bg-red-600 text-white' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'"
-                                        @click="setStatus(item, 'OFF')"
-                                    >OFF</button>
-                                    <button
-                                        type="button"
-                                        class="px-2.5 py-1 text-[11px] font-semibold rounded-md transition-colors"
-                                        :class="item.status === 'On Progress' ? 'bg-amber-600 text-white' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'"
-                                        @click="setStatus(item, 'On Progress')"
-                                    >On Progress</button>
-                                    <button
-                                        type="button"
-                                        class="px-2.5 py-1 text-[11px] font-semibold rounded-md transition-colors"
-                                        :class="item.status === 'Done' ? 'bg-green-600 text-white' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'"
-                                        @click="setStatus(item, 'Done')"
-                                    >Done</button>
+                                        class="inline-flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-xs font-bold shadow-sm transition-colors whitespace-nowrap"
+                                        :class="statusMeta(item.status).cls"
+                                        @click="openStatusMenu($event, item)"
+                                    >
+                                        <span class="truncate" x-text="statusMeta(item.status).label"></span>
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 opacity-90 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.24 4.5a.75.75 0 01-1.08 0l-4.24-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                                        </svg>
+                                    </button>
                                 </div>
-                            </div>
                             <div class="col-span-2 min-w-0">
                                 <div class="flex items-center gap-2">
                                     <div @click="openEditKeterangan(item)" class="min-w-0 flex-1 flex items-center justify-between gap-2 cursor-pointer bg-blue-50 hover:bg-blue-100 p-2 rounded-lg transition-colors border border-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 dark:border-blue-800">
@@ -363,11 +381,48 @@
                                     </button>
                                 </div>
                             </div>
+                            </div>
                         </div>
-                    </div>
-                </template>
+                    </template>
+                </div>
             </div>
         </div>
+
+        <template x-teleport="body">
+            <div
+                x-show="statusMenu.open"
+                x-transition:enter="transition ease-out duration-150"
+                x-transition:enter-start="opacity-0"
+                x-transition:enter-end="opacity-100"
+                x-transition:leave="transition ease-in duration-100"
+                x-transition:leave-start="opacity-100"
+                x-transition:leave-end="opacity-0"
+                class="fixed inset-0 z-[9999]"
+                style="display: none;"
+            >
+                <div class="absolute inset-0" @click="closeStatusMenu()"></div>
+                <div
+                    class="fixed w-44 rounded-xl border border-gray-100 bg-white shadow-xl ring-1 ring-black/5 dark:border-gray-700 dark:bg-gray-800 overflow-hidden"
+                    :style="`left:${statusMenu.x}px; top:${statusMenu.y}px;`"
+                >
+                    <button type="button" class="w-full text-left px-4 py-3 text-sm font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-3"
+                            @click="setStatus(statusMenu.item, 'OFF'); closeStatusMenu()">
+                        <span class="h-2.5 w-2.5 rounded-full bg-red-600"></span>
+                        OFF
+                    </button>
+                    <button type="button" class="w-full text-left px-4 py-3 text-sm font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-3"
+                            @click="setStatus(statusMenu.item, 'On Progress'); closeStatusMenu()">
+                        <span class="h-2.5 w-2.5 rounded-full bg-amber-600"></span>
+                        On Progress
+                    </button>
+                    <button type="button" class="w-full text-left px-4 py-3 text-sm font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-3"
+                            @click="setStatus(statusMenu.item, 'Done'); closeStatusMenu()">
+                        <span class="h-2.5 w-2.5 rounded-full bg-green-600"></span>
+                        Done
+                    </button>
+                </div>
+            </div>
+        </template>
 
         <!-- Add Pengawas Modal -->
         <div x-show="addModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm transition-opacity" style="display: none;">
