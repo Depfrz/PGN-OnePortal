@@ -274,14 +274,23 @@
                     <div x-data="{ open: false, logoutConfirmOpen: false }" class="relative">
                         <div @click="open = !open" class="flex items-center space-x-4 cursor-pointer select-none">
                             <span class="text-sm font-medium text-gray-700 dark:text-gray-200 transition-colors">{{ Auth::user()->name ?? 'Admin' }}</span>
-                            <div class="w-8 h-8 rounded-full border-2 border-gray-300 dark:border-gray-500 flex items-center justify-center transition-colors bg-gray-100 dark:bg-gray-700 overflow-hidden">
-                                @if(Auth::user()?->profile_photo_path)
-                                    <img src="{{ asset('storage/' . Auth::user()->profile_photo_path) }}" alt="Foto Profil" class="w-full h-full object-cover">
-                                @else
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 text-gray-600 dark:text-gray-300 transition-colors">
+                            <div class="w-8 h-8 rounded-full border-2 border-gray-300 dark:border-gray-500 flex items-center justify-center transition-colors bg-gray-100 dark:bg-gray-700 overflow-hidden relative">
+                                @php
+                                    $profilePhoto = Auth::user()?->profile_photo_path ? asset('storage/' . Auth::user()->profile_photo_path) : null;
+                                @endphp
+                                
+                                @if($profilePhoto)
+                                    <img src="{{ $profilePhoto }}" 
+                                         alt="Foto Profil" 
+                                         class="w-full h-full object-cover"
+                                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                @endif
+
+                                <div class="w-full h-full flex items-center justify-center text-gray-600 dark:text-gray-300 {{ $profilePhoto ? 'hidden' : '' }}" style="{{ $profilePhoto ? 'display: none;' : '' }}">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
                                         <path fill-rule="evenodd" d="M7.5 6a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM3.751 20.105a8.25 8.25 0 0116.498 0 .75.75 0 01-.437.695A18.683 18.683 0 0112 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 01-.437-.695z" clip-rule="evenodd" />
                                     </svg>
-                                @endif
+                                </div>
                             </div>
                         </div>
 

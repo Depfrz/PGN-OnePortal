@@ -56,10 +56,10 @@
                         <template x-if="photoPreview">
                             <img :src="photoPreview" alt="Foto Profil" class="h-full w-full object-cover">
                         </template>
-                        <template x-if="!photoPreview && {{ $currentPhotoUrl ? 'true' : 'false' }} && !removePhoto">
-                            <img src="{{ $currentPhotoUrl }}" alt="Foto Profil" class="h-full w-full object-cover">
+                        <template x-if="!photoPreview && {{ $currentPhotoUrl ? 'true' : 'false' }} && !removePhoto && !imageError">
+                            <img src="{{ $currentPhotoUrl }}" alt="Foto Profil" class="h-full w-full object-cover" x-on:error="imageError = true">
                         </template>
-                        <template x-if="!photoPreview && (!{{ $currentPhotoUrl ? 'true' : 'false' }} || removePhoto)">
+                        <template x-if="!photoPreview && (!{{ $currentPhotoUrl ? 'true' : 'false' }} || removePhoto || imageError)">
                             <div class="h-full w-full flex items-center justify-center bg-gradient-to-br from-blue-600 to-purple-600 text-white font-extrabold text-xl">
                                 {{ $initials }}
                             </div>
