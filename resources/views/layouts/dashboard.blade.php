@@ -208,7 +208,7 @@
                              x-transition:leave-start="opacity-100 scale-100"
                              x-transition:leave-end="opacity-0 scale-95"
                              style="display: none;" 
-                             class="absolute right-0 mt-3 w-[calc(100vw-2rem)] sm:w-[450px] md:w-[500px] lg:w-[600px] bg-white dark:bg-gray-800 rounded-xl shadow-2xl z-50 border border-gray-100 dark:border-gray-700 overflow-hidden ring-1 ring-black ring-opacity-5">
+                             class="absolute right-0 mt-3 w-[calc(100vw-2rem)] sm:w-[400px] md:w-[450px] lg:w-[480px] bg-white dark:bg-gray-800 rounded-xl shadow-2xl z-50 border border-gray-100 dark:border-gray-700 overflow-hidden ring-1 ring-black ring-opacity-5">
                             
                             <!-- Header -->
                             <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-white dark:bg-gray-800">
@@ -219,7 +219,7 @@
                             </div>
 
                             <!-- Notification List -->
-                            <div class="max-h-[60vh] sm:max-h-[500px] overflow-y-auto custom-scrollbar">
+                            <div class="max-h-[60vh] sm:max-h-[480px] md:max-h-[550px] overflow-y-auto custom-scrollbar">
                                 <template x-for="notification in notifications" :key="notification.id">
                                     <div @click="markAsRead(notification.id)" 
                                          :class="{'bg-blue-50/60 dark:bg-blue-900/20': !notification.read_at, 'bg-white dark:bg-gray-800': notification.read_at}" 
