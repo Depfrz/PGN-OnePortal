@@ -18,8 +18,20 @@ class DashboardController extends Controller
 
         $search = trim((string) $request->query('search', ''));
 
-        if ($user->hasRole(['Supervisor', 'Admin'])) {
-            $query = Module::where('status', true)->whereNotIn('name', $excludedModules);
+        // Check if user has specific access rights configured (Priority over Role)
+        // We check if ANY access record exists, regardless of can_read/show_on_dashboard status
+        $hasConfiguredAccess = \App\Models\ModuleAccess::where('user_id', $user->id)->exists();
+
+        if ($hasConfiguredAccess) {
+            // Get module IDs that are readable AND enabled for dashboard
+            $assignedModuleIds = \App\Models\ModuleAccess::where('user_id', $user->id)
+                ->where('can_read', true)
+                ->where('show_on_dashboard', true)
+                ->pluck('module_id');
+
+            $query = Module::whereIn('id', $assignedModuleIds)
+                ->where('status', true)
+                ->whereNotIn('name', $excludedModules);
 
             if ($search !== '') {
                 $query->where(function ($q) use ($search) {
@@ -29,19 +41,10 @@ class DashboardController extends Controller
             }
 
             $modules = $query->get();
-            return view('dashboard', compact('modules'));
         }
-        
-        // Get module IDs from module_access where can_read is true
-        $assignedModuleIds = \App\Models\ModuleAccess::where('user_id', $user->id)
-            ->where('can_read', true)
-            ->pluck('module_id');
-
-        // Check if user has specific access rights configured
-        if ($assignedModuleIds->isNotEmpty()) {
-            $query = Module::whereIn('id', $assignedModuleIds)
-                ->where('status', true)
-                ->whereNotIn('name', $excludedModules);
+        // Fallback for Admin/Supervisor if no specific access is configured (Show All)
+        elseif ($user->hasRole(['Supervisor', 'Admin'])) {
+            $query = Module::where('status', true)->whereNotIn('name', $excludedModules);
 
             if ($search !== '') {
                 $query->where(function ($q) use ($search) {

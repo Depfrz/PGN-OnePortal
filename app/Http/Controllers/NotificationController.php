@@ -38,12 +38,20 @@ class NotificationController extends Controller
         if ($notification) {
             $notification->markAsRead();
         }
-        return response()->json(['success' => true]);
+        
+        if (request()->wantsJson()) {
+            return response()->json(['success' => true]);
+        }
+        return redirect()->back();
     }
 
     public function markAllRead()
     {
         Auth::user()->unreadNotifications->markAsRead();
-        return response()->json(['success' => true]);
+        
+        if (request()->wantsJson()) {
+            return response()->json(['success' => true]);
+        }
+        return redirect()->back();
     }
 }

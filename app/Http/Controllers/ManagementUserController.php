@@ -33,12 +33,13 @@ class ManagementUserController extends Controller
                 'role' => $user->roles->first()?->name ?? 'User',
                 'status' => 'Active', // Static for now
                 'hak_akses' => $user->moduleAccesses->map(fn($ma) => $ma->module->name)->values()->toArray(),
+                'dashboard_access' => $user->moduleAccesses->filter(fn($ma) => $ma->show_on_dashboard)->map(fn($ma) => $ma->module->name)->values()->toArray(),
             ];
         });
 
         $availableRoles = Role::pluck('name');
-        // Get all available modules for access rights
-        $availableAccess = Module::pluck('name');
+        // Get all available modules for access rights, grouped by their 'group' column
+        $availableAccess = Module::orderBy('group')->orderBy('name')->get()->groupBy('group');
 
         return view('management-user', compact('users', 'availableRoles', 'availableAccess'));
     }
@@ -99,9 +100,11 @@ class ManagementUserController extends Controller
         $request->validate([
             'hak_akses' => ['array'],
             'hak_akses.*' => ['exists:modules,name'],
+            'dashboard_access' => ['array'],
+            'dashboard_access.*' => ['exists:modules,name'],
         ]);
 
-        $this->syncAccess($user, $request->hak_akses ?? []);
+        $this->syncAccess($user, $request->hak_akses ?? [], $request->dashboard_access ?? []);
 
         AuditService::log(Auth::user(), 'update', 'Management User', "Memperbarui hak akses user: {$user->name}");
 
@@ -136,7 +139,7 @@ class ManagementUserController extends Controller
         return response()->json(['message' => 'User deleted successfully']);
     }
 
-    private function syncAccess(User $user, array $moduleNames)
+    private function syncAccess(User $user, array $moduleNames, array $dashboardModuleNames = [])
     {
         $modules = Module::whereIn('name', $moduleNames)->get();
         
@@ -149,6 +152,7 @@ class ManagementUserController extends Controller
                 'can_read' => true,
                 'can_write' => true,
                 'can_delete' => true,
+                'show_on_dashboard' => in_array($module->name, $dashboardModuleNames),
             ]);
         }
     }

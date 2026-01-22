@@ -54,4 +54,16 @@ class User extends Authenticatable
     {
         return $this->hasMany(ModuleAccess::class);
     }
+
+    public function favoriteDocuments()
+    {
+        return $this->belongsToMany(BukuSakuDocument::class, 'buku_saku_favorites', 'user_id', 'buku_saku_document_id')->withTimestamps();
+    }
+
+    public function hasModuleAccess($moduleName)
+    {
+        return $this->moduleAccesses->contains(function ($access) use ($moduleName) {
+            return $access->module && $access->module->name === $moduleName;
+        });
+    }
 }

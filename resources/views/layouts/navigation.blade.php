@@ -18,8 +18,79 @@
                 </div>
             </div>
 
-            <!-- Settings Dropdown -->
+            <!-- Notification & Settings Dropdown -->
             <div class="hidden sm:flex sm:items-center sm:ms-6">
+                <!-- Notification Dropdown -->
+                <div class="relative mr-3">
+                    <x-dropdown align="right" width="w-[450px]">
+                        <x-slot name="trigger">
+                            <button class="relative p-2 rounded-full bg-gray-50 text-gray-600 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150 ease-in-out">
+                                <span class="sr-only">View notifications</span>
+                                <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                                </svg>
+                                @php
+                                    $isBukuSaku = request()->routeIs('buku-saku.*');
+                                    
+                                    // Filter unread notifications count
+                                    $unreadCount = auth()->user()->unreadNotifications->filter(function($n) use ($isBukuSaku) {
+                                        if ($isBukuSaku) {
+                                            return isset($n->data['module']) && $n->data['module'] === 'Buku Saku';
+                                        }
+                                        return true; // Show all in dashboard/other pages
+                                    })->count();
+
+                                    // Filter list of notifications
+                                    $notifications = auth()->user()->notifications()->latest()->take(20)->get()->filter(function($n) use ($isBukuSaku) {
+                                        if ($isBukuSaku) {
+                                            return isset($n->data['module']) && $n->data['module'] === 'Buku Saku';
+                                        }
+                                        return true; // Show all in dashboard/other pages
+                                    })->take(10);
+                                @endphp
+
+                                @if($unreadCount > 0)
+                                    <span class="absolute top-0 right-0 block h-2.5 w-2.5 rounded-full ring-2 ring-white bg-red-500 transform translate-x-1/4 -translate-y-1/4"></span>
+                                @endif
+                            </button>
+                        </x-slot>
+
+                        <x-slot name="content">
+                            <div class="px-4 py-3 border-b border-gray-100 font-semibold text-gray-700 bg-white">
+                                Notifikasi {{ $isBukuSaku ? '(Buku Saku)' : '' }}
+                            </div>
+                            
+                            <div class="max-h-80 overflow-y-auto">
+                                @forelse($notifications as $notification)
+                                    <div class="px-4 py-3 border-b border-gray-100 text-sm hover:bg-gray-50 {{ $notification->read_at ? 'bg-white opacity-75' : 'bg-blue-50' }}">
+                                        <p class="font-medium text-gray-900">{{ $notification->data['description'] ?? 'No Description' }}</p>
+                                        <div class="flex justify-between items-center mt-1">
+                                            <span class="text-xs text-gray-500">{{ $notification->created_at->format('d/m/Y') }}</span>
+                                            @if(!$isBukuSaku)
+                                                <span class="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">{{ $notification->data['module'] ?? 'System' }}</span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                @empty
+                                    <div class="px-4 py-3 text-sm text-gray-500 text-center">
+                                        Tidak ada notifikasi {{ $isBukuSaku ? 'Buku Saku' : '' }}
+                                    </div>
+                                @endforelse
+                            </div>
+                            
+                            @if($unreadCount > 0)
+                                <div class="block px-4 py-2 text-xs text-center text-blue-600 font-medium hover:bg-gray-100 cursor-pointer border-t border-gray-100">
+                                    <form method="POST" action="{{ route('notifications.mark-all-read') }}">
+                                        @csrf
+                                        <button type="submit" class="w-full text-center">Tandai semua sudah dibaca</button>
+                                    </form>
+                                </div>
+                            @endif
+                        </x-slot>
+                    </x-dropdown>
+                </div>
+
+                <!-- Settings Dropdown -->
                 <x-dropdown align="right" width="48">
                     <x-slot name="trigger">
                         <button class="inline-flex items-center px-3 py-2 border border-transparent text-xs leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150">
@@ -77,7 +148,7 @@
             @endcan
 
             @can('view module history')
-            <x-responsive-nav-link :href="route('history.index')" :active="request()->routeIs('history.*')">
+            <x-responsive-nav-link :href="route('history')" :active="request()->routeIs('history.*')">
                 {{ __('Data History') }}
             </x-responsive-nav-link>
             @endcan

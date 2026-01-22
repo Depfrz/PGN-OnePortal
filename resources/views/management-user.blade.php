@@ -10,6 +10,7 @@
         successMessage: '',
         selectedUser: null,
         selectedAccess: [],
+        dashboardAccess: [],
         
         // Form Data
         newUser: {
@@ -58,6 +59,7 @@
         openEditAccess(user) {
             this.selectedUser = JSON.parse(JSON.stringify(user)); // Clone object
             this.selectedAccess = [...this.selectedUser.hak_akses];
+            this.dashboardAccess = [...(this.selectedUser.dashboard_access || [])];
             this.editAccessModal = true;
         },
 
@@ -121,7 +123,10 @@
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
                     },
-                    body: JSON.stringify({ hak_akses: this.selectedAccess })
+                    body: JSON.stringify({ 
+                        hak_akses: this.selectedAccess,
+                        dashboard_access: this.dashboardAccess 
+                    })
                 });
 
                 if (response.ok) {
@@ -129,6 +134,7 @@
                     const index = this.users.findIndex(u => u.id === this.selectedUser.id);
                     if (index !== -1) {
                         this.users[index].hak_akses = [...this.selectedAccess];
+                        this.users[index].dashboard_access = [...this.dashboardAccess];
                     }
                     this.editAccessModal = false;
                     this.showSuccess('Hak akses berhasil diperbarui');
@@ -449,13 +455,68 @@
                 </div>
                 <div class="space-y-4">
                     <p class="text-sm text-gray-600 dark:text-gray-300 mb-2">Pilih modul yang dapat diakses oleh <span class="font-semibold" x-text="selectedUser?.name"></span>:</p>
-                    <div class="grid grid-cols-2 gap-4">
-                        <template x-for="access in availableAccess" :key="access">
-                            <label class="flex items-center p-4 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-200 dark:hover:border-blue-800 transition-colors gap-4">
-                                <input type="checkbox" :value="access" x-model="selectedAccess" class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                                <span class="text-base font-medium text-gray-700 dark:text-gray-300" x-text="access"></span>
-                            </label>
-                        </template>
+                    
+                    <div class="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+                        @php
+                            $subModules = ['Dokumen Favorit', 'Riwayat Dokumen', 'Pengecekan File', 'Upload Dokumen', 'Beranda'];
+                        @endphp
+                        @foreach($availableAccess as $group => $modules)
+                            @php
+                                // Cari Main Module (yang namanya sama dengan nama Group)
+                                $mainModule = $modules->firstWhere('name', $group);
+                                
+                                // Jika group memiliki banyak modul (seperti Buku Saku), kita sembunyikan baris Main Module dari list item
+                                // agar tidak duplikat, dan kita auto-sync aksesnya.
+                                $hideMainModuleRow = $modules->count() > 1 && $mainModule;
+                            @endphp
+                            <div class="mb-6">
+                                <div class="flex items-center justify-between mb-3 pb-2 border-b border-gray-100 dark:border-gray-700">
+                                    <h3 class="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">
+                                        {{ $group }}
+                                    </h3>
+                                    
+                                    @if($mainModule)
+                                        <!-- Header Checkbox for Dashboard Visibility (Only if Main Module exists) -->
+                                        <label class="flex items-center gap-2 cursor-pointer" title="Tampil di Dashboard Utama">
+                                            <span class="text-xs text-gray-500 dark:text-gray-400">Tampil di Dashboard</span>
+                                            <input type="checkbox" 
+                                                   value="{{ $mainModule->name }}" 
+                                                   x-model="dashboardAccess" 
+                                                   @change="$el.checked && !selectedAccess.includes('{{ $mainModule->name }}') ? selectedAccess.push('{{ $mainModule->name }}') : null"
+                                                   class="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500">
+                                        </label>
+                                    @endif
+                                </div>
+                                
+                                <div class="grid grid-cols-1 gap-3">
+                                    @foreach($modules as $module)
+                                        @if($hideMainModuleRow && $module->id === $mainModule->id)
+                                            @continue
+                                        @endif
+
+                                        <div class="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-200 dark:hover:border-blue-800 transition-colors">
+                                            <label class="flex items-center gap-3 cursor-pointer">
+                                                <input type="checkbox" value="{{ $module->name }}" x-model="selectedAccess" class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                                                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ $module->name }}</span>
+                                            </label>
+                                            
+                                            {{-- 
+                                                Tampilkan checkbox dashboard di baris item HANYA JIKA:
+                                                1. Bukan Main Module (karena Main Module dikontrol header)
+                                                2. Bukan Sub-Module (seperti Beranda, dll)
+                                                3. Atau jika ini Main Module tapi dalam grup single (List Pengawasan), tapi kita sudah putuskan header mengontrol main module.
+                                                   Jadi, jika $mainModule ada dan ini adalah $mainModule, kita hide checkbox itemnya.
+                                            --}}
+                                            @if(!in_array($module->name, $subModules) && (!$mainModule || $module->id !== $mainModule->id))
+                                            <label class="flex items-center gap-2 cursor-pointer" x-show="selectedAccess.includes('{{ $module->name }}')" x-transition title="Tampil di Beranda">
+                                                <input type="checkbox" value="{{ $module->name }}" x-model="dashboardAccess" class="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500">
+                                            </label>
+                                            @endif
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endforeach
                     </div>
                     <div class="flex justify-end space-x-3 mt-8">
                         <button @click="editAccessModal = false" class="px-5 py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 font-medium transition-colors">Batal</button>

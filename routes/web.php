@@ -80,6 +80,27 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    // Buku Saku Routes
+    Route::prefix('buku-saku')->name('buku-saku.')->group(function () {
+        Route::get('/', [App\Http\Controllers\BukuSakuController::class, 'index'])->name('index');
+        Route::get('/upload', [App\Http\Controllers\BukuSakuController::class, 'upload'])->name('upload');
+        Route::post('/store', [App\Http\Controllers\BukuSakuController::class, 'store'])->name('store');
+        Route::delete('/{document}', [App\Http\Controllers\BukuSakuController::class, 'destroy'])->name('destroy');
+        Route::get('/favorites', [App\Http\Controllers\BukuSakuController::class, 'favorites'])->name('favorites');
+        Route::post('/{id}/favorite', [App\Http\Controllers\BukuSakuController::class, 'toggleFavorite'])->name('toggle-favorite');
+        Route::get('/history', [App\Http\Controllers\BukuSakuController::class, 'history'])->name('history');
+        Route::get('/download/{document}', [App\Http\Controllers\BukuSakuController::class, 'download'])->name('download');
+        Route::get('/preview/{document}', [App\Http\Controllers\BukuSakuController::class, 'preview'])->name('preview');
+        
+        // Approval Workflow
+        Route::get('/approval', [App\Http\Controllers\BukuSakuController::class, 'approvalIndex'])->name('approval');
+        Route::patch('/{id}/approve', [App\Http\Controllers\BukuSakuController::class, 'approve'])->name('approve');
+        Route::patch('/{id}/reject', [App\Http\Controllers\BukuSakuController::class, 'reject'])->name('reject');
+        
+        // Detail View (Must be last to avoid conflict with specific sub-routes)
+        Route::get('/{document}', [App\Http\Controllers\BukuSakuController::class, 'show'])->name('show');
+    });
 });
 
 require __DIR__.'/auth.php';
