@@ -62,6 +62,7 @@ class DashboardController extends Controller
             
             // EMERGENCY FIX: Manually inject missing modules if they are not in the result but user has access
             // This handles cases where excludedModules logic might be over-filtering or DB query issues
+            // [Sync Check] Forced update to ensure code propagation
             $existingNames = $modules->pluck('name')->toArray();
             
             // Check for Buku Saku
