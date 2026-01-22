@@ -7,6 +7,7 @@ use App\Models\ModuleAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class ListPengawasanController extends Controller
@@ -65,7 +66,7 @@ class ListPengawasanController extends Controller
         $search = $request->query('search', '');
 
         $pengawasQuery = DB::table('pengawas')
-            ->select('id', 'name', 'divisi', 'tanggal', 'status', 'created_at')
+            ->select('id', 'name', 'divisi', 'tanggal', 'status', 'created_at', 'bukti_path', 'bukti_original_name', 'bukti_mime', 'bukti_size', 'bukti_uploaded_at')
             ->orderBy('created_at', 'desc');
 
         if ($search !== '') {
@@ -88,6 +89,14 @@ class ListPengawasanController extends Controller
                 'tanggal' => $p->created_at ? \Carbon\Carbon::parse($p->created_at)->format('d-m-Y H:i') : '-',
                 'status' => $this->normalizeStatus($p->status),
                 'keterangan' => $labels,
+                'bukti' => [
+                    'path' => $p->bukti_path,
+                    'name' => $p->bukti_original_name,
+                    'mime' => $p->bukti_mime,
+                    'size' => $p->bukti_size,
+                    'uploaded_at' => $p->bukti_uploaded_at ? \Carbon\Carbon::parse($p->bukti_uploaded_at)->format('d-m-Y H:i') : null,
+                    'url' => $p->bukti_path ? asset('storage/' . $p->bukti_path) : null,
+                ],
             ];
         })->toArray();
 
@@ -249,6 +258,81 @@ class ListPengawasanController extends Controller
         }
 
         return response()->json(['message' => 'Status berhasil diperbarui']);
+    }
+
+    public function uploadBukti(Request $request, int $id)
+    {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+        if (!$this->canWriteForModule($user)) {
+            return response()->json(['message' => 'Unauthorized action.'], 403);
+        }
+
+        $data = $request->validate([
+            'bukti' => ['required', 'file', 'max:5120', 'mimes:pdf,jpg,jpeg,png'],
+        ]);
+
+        $pengawas = DB::table('pengawas')->where('id', $id)->first();
+        if (!$pengawas) {
+            return response()->json(['message' => 'Proyek tidak ditemukan'], 404);
+        }
+
+        if (!empty($pengawas->bukti_path)) {
+            Storage::disk('public')->delete($pengawas->bukti_path);
+        }
+
+        $file = $data['bukti'];
+        $path = $file->store('pengawasan-bukti/' . $id, 'public');
+
+        DB::table('pengawas')->where('id', $id)->update([
+            'bukti_path' => $path,
+            'bukti_original_name' => $file->getClientOriginalName(),
+            'bukti_mime' => $file->getClientMimeType(),
+            'bukti_size' => $file->getSize(),
+            'bukti_uploaded_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return response()->json([
+            'message' => 'Bukti berhasil diunggah',
+            'bukti' => [
+                'path' => $path,
+                'name' => $file->getClientOriginalName(),
+                'mime' => $file->getClientMimeType(),
+                'size' => $file->getSize(),
+                'uploaded_at' => now()->format('d-m-Y H:i'),
+                'url' => asset('storage/' . $path),
+            ],
+        ]);
+    }
+
+    public function deleteBukti(int $id)
+    {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+        if (!$this->canWriteForModule($user)) {
+            return response()->json(['message' => 'Unauthorized action.'], 403);
+        }
+
+        $pengawas = DB::table('pengawas')->where('id', $id)->first();
+        if (!$pengawas) {
+            return response()->json(['message' => 'Proyek tidak ditemukan'], 404);
+        }
+
+        if (!empty($pengawas->bukti_path)) {
+            Storage::disk('public')->delete($pengawas->bukti_path);
+        }
+
+        DB::table('pengawas')->where('id', $id)->update([
+            'bukti_path' => null,
+            'bukti_original_name' => null,
+            'bukti_mime' => null,
+            'bukti_size' => null,
+            'bukti_uploaded_at' => null,
+            'updated_at' => now(),
+        ]);
+
+        return response()->json(['message' => 'Bukti berhasil dihapus']);
     }
 
     public function renameOption(Request $request)

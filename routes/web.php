@@ -63,6 +63,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('list-pengawasan.update');
     Route::patch('/list-pengawasan/{id}/status', [ListPengawasanController::class, 'updateStatus'])
         ->name('list-pengawasan.update-status');
+    Route::post('/list-pengawasan/{id}/bukti', [ListPengawasanController::class, 'uploadBukti'])
+        ->name('list-pengawasan.upload-bukti');
+    Route::delete('/list-pengawasan/{id}/bukti', [ListPengawasanController::class, 'deleteBukti'])
+        ->name('list-pengawasan.delete-bukti');
     Route::delete('/list-pengawasan/{id}', [ListPengawasanController::class, 'destroy'])
         ->name('list-pengawasan.destroy');
     Route::patch('/list-pengawasan/keterangan/rename', [ListPengawasanController::class, 'renameOption'])
