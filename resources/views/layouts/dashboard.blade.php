@@ -53,7 +53,7 @@
         <div x-show="sidebarOpen" @click="sidebarOpen = false" class="fixed inset-0 z-20 bg-black bg-opacity-50 lg:hidden" style="display: none;"></div>
 
         <!-- Sidebar -->
-        <aside :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'" class="fixed inset-y-0 left-0 z-30 w-[280px] bg-[#439df1] dark:bg-gray-800 flex flex-col transition-transform duration-300 lg:static lg:translate-x-0 border-r dark:border-gray-700">
+        <aside :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'" class="fixed inset-y-0 left-0 z-30 w-[280px] bg-[#439df1] dark:bg-gray-800 flex flex-col transition-transform duration-300 lg:static lg:translate-x-0 border-r border-blue-400/30 dark:border-gray-700">
             <!-- Logo -->
             <div class="p-6 flex items-center justify-center bg-[#439df1] dark:bg-gray-800 transition-colors">
                 <a href="{{ route('dashboard') }}" class="block">

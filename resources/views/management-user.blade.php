@@ -60,6 +60,16 @@
             this.selectedUser = JSON.parse(JSON.stringify(user)); // Clone object
             this.selectedAccess = [...this.selectedUser.hak_akses];
             this.dashboardAccess = [...(this.selectedUser.dashboard_access || [])];
+            
+            // Auto-enable dashboard access for specific modules if they are selected
+            // This ensures backward compatibility for users who previously had access but dashboard unchecked
+            const autoDashboardModules = ['Buku Saku', 'List Pengawasan'];
+            autoDashboardModules.forEach(moduleName => {
+                if (this.selectedAccess.includes(moduleName) && !this.dashboardAccess.includes(moduleName)) {
+                    this.dashboardAccess.push(moduleName);
+                }
+            });
+            
             this.editAccessModal = true;
         },
 
@@ -458,41 +468,89 @@
                     
                     <div class="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
                         @php
+                            // 1. Flatten all modules from the controller's grouping
+                            $allModules = $availableAccess->flatten();
+
+                            // 2. Custom Grouping & Re-ordering
+                            $groupedModules = $allModules->groupBy(function($item) {
+                                // Force 'Buku Saku' module into 'Buku Saku' group
+                                if ($item->name === 'Buku Saku') return 'Buku Saku';
+                                return $item->group;
+                            });
+
+                            // Define desired order
+                            $orderedGroups = ['Web Utama', 'Buku Saku', 'List Pengawasan'];
+                            
+                            // Get other groups that might exist (excluding Lainnya if empty/merged)
+                            $otherGroups = $groupedModules->keys()
+                                ->diff($orderedGroups)
+                                ->filter(fn($g) => $g !== 'Lainnya' || $groupedModules[$g]->isNotEmpty());
+                                
+                            $finalGroupOrder = collect($orderedGroups)->merge($otherGroups);
+                            
                             $subModules = ['Dokumen Favorit', 'Riwayat Dokumen', 'Pengecekan File', 'Upload Dokumen', 'Beranda'];
                         @endphp
-                        @foreach($availableAccess as $group => $modules)
+
+                        @foreach($finalGroupOrder as $groupName)
                             @php
-                                // Cari Main Module (yang namanya sama dengan nama Group)
-                                $mainModule = $modules->firstWhere('name', $group);
-                            @endphp
-                            <div class="mb-6">
-                                <div class="flex items-center justify-between mb-3 pb-2 border-b border-gray-100 dark:border-gray-700">
-                                    <h3 class="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">
-                                        {{ $group }}
-                                    </h3>
-                                </div>
+                                $modules = $groupedModules->get($groupName);
+                                if (!$modules) continue;
+
+                                // Check if there is a "Main Module" that matches the Group Name
+                                // e.g. Group "Buku Saku" contains module "Buku Saku"
+                                $headerModule = $modules->first(fn($m) => strcasecmp($m->name, $groupName) === 0);
                                 
-                                <div class="grid grid-cols-1 gap-3">
-                                    @foreach($modules as $module)
-                                        <div class="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-200 dark:hover:border-blue-800 transition-colors">
-                                            <label class="flex items-center gap-3 cursor-pointer w-full">
+                                // Filter out the header module from the list of items to display below
+                                $itemModules = $modules->filter(fn($m) => !$headerModule || $m->id !== $headerModule->id);
+                            @endphp
+
+                            <div class="mb-6">
+                                <!-- Group Header -->
+                                <div class="flex items-center justify-between mb-3 pb-2 border-b border-gray-100 dark:border-gray-700 min-h-[40px]">
+                                    @if($headerModule)
+                                        <!-- Header is a Module (Access + Dashboard) -->
+                                        <div class="flex items-center justify-between w-full">
+                                            <label class="flex items-center gap-3 cursor-pointer">
                                                 <input type="checkbox" 
-                                                       value="{{ $module->name }}" 
+                                                       value="{{ $headerModule->name }}" 
                                                        x-model="selectedAccess" 
                                                        @change="
                                                            if ($el.checked) {
-                                                               // Auto-enable dashboard access for relevant modules
-                                                               if (!dashboardAccess.includes('{{ $module->name }}') && !{{ Js::from($subModules) }}.includes('{{ $module->name }}')) {
-                                                                   dashboardAccess.push('{{ $module->name }}');
+                                                               // Auto-enable dashboard access for Header Modules (Buku Saku, List Pengawasan)
+                                                               if (!dashboardAccess.includes('{{ $headerModule->name }}')) {
+                                                                   dashboardAccess.push('{{ $headerModule->name }}');
                                                                }
                                                            } else {
                                                                // Remove from dashboard access if disabled
-                                                               dashboardAccess = dashboardAccess.filter(i => i !== '{{ $module->name }}');
+                                                               dashboardAccess = dashboardAccess.filter(i => i !== '{{ $headerModule->name }}');
                                                            }
                                                        "
                                                        class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                                                <span class="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">{{ $groupName }}</span>
+                                            </label>
+                                        </div>
+                                    @else
+                                        <!-- Header is just Text (Web Utama, etc.) -->
+                                        <h3 class="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">
+                                            {{ $groupName }}
+                                        </h3>
+                                    @endif
+                                </div>
+                                
+                                <!-- Module Items -->
+                                <div class="grid grid-cols-1 gap-3">
+                                    @foreach($itemModules as $module)
+                                        <div class="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-200 dark:hover:border-blue-800 transition-colors">
+                                            <!-- Access Checkbox (Left) -->
+                                            <label class="flex items-center gap-3 cursor-pointer flex-grow">
+                                                <input type="checkbox" 
+                                                       value="{{ $module->name }}" 
+                                                       x-model="selectedAccess" 
+                                                       class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
                                                 <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ $module->name }}</span>
                                             </label>
+                                            
+                                            <!-- No Dashboard Checkbox for items (per request requirements) -->
                                         </div>
                                     @endforeach
                                 </div>

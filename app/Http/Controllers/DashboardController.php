@@ -14,7 +14,11 @@ class DashboardController extends Controller
         $user = Auth::user();
 
         // Built-in features to exclude from the main dashboard grid as they are in the sidebar
-        $excludedModules = ['Dashboard', 'Integrasi Sistem', 'Management User', 'Data History', 'History'];
+        $excludedModules = [
+            'Dashboard', 'Integrasi Sistem', 'Management User', 'Data History', 'History',
+            // Exclude Buku Saku sub-modules from main dashboard
+            'Dokumen Favorit', 'Riwayat Dokumen', 'Pengecekan File', 'Upload Dokumen', 'Beranda'
+        ];
 
         $search = trim((string) $request->query('search', ''));
 
@@ -24,10 +28,24 @@ class DashboardController extends Controller
 
         if ($hasConfiguredAccess) {
             // Get module IDs that are readable AND enabled for dashboard
-            $assignedModuleIds = \App\Models\ModuleAccess::where('user_id', $user->id)
+            // We explicitly force 'Buku Saku' and 'List Pengawasan' to show if the user has read access,
+            // regardless of the 'show_on_dashboard' flag (which might be desynced).
+            $userAccesses = \App\Models\ModuleAccess::where('user_id', $user->id)
                 ->where('can_read', true)
-                ->where('show_on_dashboard', true)
-                ->pluck('module_id');
+                ->with('module')
+                ->get();
+
+            $assignedModuleIds = $userAccesses->filter(function ($access) {
+                if (!$access->module) return false;
+                
+                // Always show these specific modules if user has read access
+                if (in_array($access->module->name, ['Buku Saku', 'List Pengawasan'])) {
+                    return true;
+                }
+                
+                // For others, respect the flag
+                return $access->show_on_dashboard;
+            })->pluck('module_id');
 
             $query = Module::whereIn('id', $assignedModuleIds)
                 ->where('status', true)
@@ -41,6 +59,25 @@ class DashboardController extends Controller
             }
 
             $modules = $query->get();
+            
+            // EMERGENCY FIX: Manually inject missing modules if they are not in the result but user has access
+            // This handles cases where excludedModules logic might be over-filtering or DB query issues
+            $existingNames = $modules->pluck('name')->toArray();
+            
+            // Check for Buku Saku
+            if (!in_array('Buku Saku', $existingNames) && 
+                $userAccesses->contains(fn($a) => $a->module && $a->module->name === 'Buku Saku')) {
+                $bukuSaku = Module::where('name', 'Buku Saku')->first();
+                if ($bukuSaku) $modules->push($bukuSaku);
+            }
+            
+            // Check for List Pengawasan
+            if (!in_array('List Pengawasan', $existingNames) && 
+                $userAccesses->contains(fn($a) => $a->module && $a->module->name === 'List Pengawasan')) {
+                $listPengawasan = Module::where('name', 'List Pengawasan')->first();
+                if ($listPengawasan) $modules->push($listPengawasan);
+            }
+
         }
         // Fallback for Admin/Supervisor if no specific access is configured (Show All)
         elseif ($user->hasRole(['Supervisor', 'Admin'])) {

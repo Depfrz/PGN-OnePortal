@@ -145,14 +145,29 @@ class ManagementUserController extends Controller
         
         $user->moduleAccesses()->delete();
 
+        // Sub-modules that should NEVER be on the dashboard
+        $subModules = ['Dokumen Favorit', 'Riwayat Dokumen', 'Pengecekan File', 'Upload Dokumen', 'Beranda'];
+        
+        // Modules that MUST be on the dashboard if accessed
+        $forcedDashboardModules = ['Buku Saku', 'List Pengawasan'];
+
         foreach ($modules as $module) {
+            $showOnDashboard = in_array($module->name, $dashboardModuleNames);
+            
+            // Enforce rules
+            if (in_array($module->name, $forcedDashboardModules)) {
+                $showOnDashboard = true;
+            } elseif (in_array($module->name, $subModules)) {
+                $showOnDashboard = false;
+            }
+
             ModuleAccess::create([
                 'user_id' => $user->id,
                 'module_id' => $module->id,
                 'can_read' => true,
                 'can_write' => true,
                 'can_delete' => true,
-                'show_on_dashboard' => in_array($module->name, $dashboardModuleNames),
+                'show_on_dashboard' => $showOnDashboard,
             ]);
         }
     }
