@@ -1,5 +1,5 @@
 <x-dashboard-layout>
-    <div class="min-h-screen p-4 lg:p-8">
+    <div class="min-h-screen p-4 lg:p-8" x-data="{ search: @js(request('search')), matches(card) { const term = (this.search || '').toLowerCase(); if (!term) return true; const name = card.dataset.name || ''; const description = card.dataset.description || ''; return name.toLowerCase().includes(term) || description.toLowerCase().includes(term); }, hasMatches() { return Array.from(this.$refs.cards.querySelectorAll('[data-module-card]')).some(card => this.matches(card)); } }">
         <!-- Header Section -->
         <div class="flex flex-col md:flex-row md:items-center justify-between mb-10 gap-6">
             <div>
@@ -17,6 +17,7 @@
                         type="text" 
                         name="search" 
                         value="{{ request('search') }}" 
+                        x-model="search"
                         class="w-full py-3 pl-12 pr-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 dark:text-white placeholder-gray-400 transition-all shadow-sm hover:border-gray-300 dark:hover:border-gray-600" 
                         placeholder="Cari modul atau sistem..."
                         autocomplete="off"
@@ -25,9 +26,17 @@
             </form>
         </div>
 
-        <!-- Modules Grid -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            @forelse($modules as $module)
+        @if($modules->isEmpty())
+            <div class="flex flex-col items-center justify-center py-20 text-center">
+                <div class="w-24 h-24 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-6">
+                    <svg class="w-10 h-10 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Tidak ada modul ditemukan</h3>
+                <p class="text-gray-500 dark:text-gray-400 mt-2 max-w-sm">Coba sesuaikan kata kunci pencarian Anda atau hubungi administrator untuk akses modul.</p>
+            </div>
+        @else
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" x-ref="cards">
+            @foreach($modules as $module)
                 @php
                     // Logic for Icon/Preview
                     $previewUrl = null;
@@ -58,6 +67,10 @@
                 @endphp
 
                 <a href="{{ $module->url }}" 
+                   data-module-card
+                   data-name="{{ $module->name }}"
+                   data-description="{{ $module->description ?? '' }}"
+                   x-show="matches($el)"
                    target="{{ ($module->tab_type === 'new' || Str::startsWith($module->url, ['http://', 'https://'])) ? '_blank' : '_self' }}"
                    rel="{{ ($module->tab_type === 'new' || Str::startsWith($module->url, ['http://', 'https://'])) ? 'noopener noreferrer' : '' }}"
                    class="group relative bg-white dark:bg-gray-800 rounded-2xl p-8 shadow-sm hover:shadow-xl border border-gray-100 dark:border-gray-700 transition-all duration-300 hover:-translate-y-1 flex flex-col items-center text-center h-full overflow-hidden cursor-pointer">
@@ -110,15 +123,15 @@
                     </div>
                     @endif
                 </a>
-            @empty
-                <div class="col-span-full flex flex-col items-center justify-center py-20 text-center">
-                    <div class="w-24 h-24 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-6">
-                        <svg class="w-10 h-10 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg>
-                    </div>
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Tidak ada modul ditemukan</h3>
-                    <p class="text-gray-500 dark:text-gray-400 mt-2 max-w-sm">Coba sesuaikan kata kunci pencarian Anda atau hubungi administrator untuk akses modul.</p>
-                </div>
-            @endforelse
+            @endforeach
         </div>
+        <div class="flex flex-col items-center justify-center py-20 text-center" x-show="!hasMatches()">
+            <div class="w-24 h-24 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-6">
+                <svg class="w-10 h-10 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg>
+            </div>
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Tidak ada modul ditemukan</h3>
+            <p class="text-gray-500 dark:text-gray-400 mt-2 max-w-sm">Coba sesuaikan kata kunci pencarian Anda atau hubungi administrator untuk akses modul.</p>
+        </div>
+        @endif
     </div>
 </x-dashboard-layout>

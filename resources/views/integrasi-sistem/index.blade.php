@@ -16,7 +16,7 @@
                 <!-- Delete Module Button (Toggle) -->
                 @hasrole('Supervisor|Admin')
                 <button @click="deleteMode = !deleteMode" 
-                        :class="deleteMode ? 'bg-gray-500 hover:bg-gray-600' : 'bg-red-600 hover:bg-red-700'"
+                        :class="deleteMode ? 'bg-slate-600 hover:bg-slate-700' : 'bg-rose-600 hover:bg-rose-700'"
                         class="w-full sm:w-auto text-white text-base font-medium px-6 py-2.5 rounded-lg transition-all shadow-sm hover:shadow flex items-center justify-center gap-2">
                     <!-- Icon Trash (Show when NOT in delete mode) -->
                     <svg x-show="!deleteMode" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
@@ -32,7 +32,7 @@
                 
                 <!-- Add Module Button -->
                 @hasrole('Supervisor|Admin')
-                <a x-show="!deleteMode" href="{{ route('integrasi-sistem.create') }}" style="background-color: #16a34a;" class="w-full sm:w-auto text-white text-base font-medium px-6 py-2.5 rounded-lg hover:opacity-90 transition-all shadow-sm hover:shadow text-center">
+                <a x-show="!deleteMode" href="{{ route('integrasi-sistem.create') }}" class="w-full sm:w-auto text-white text-base font-medium px-6 py-2.5 rounded-lg transition-all shadow-sm hover:shadow text-center bg-emerald-600 hover:bg-emerald-700">
                     Tambah Modul
                 </a>
                 @endhasrole
@@ -113,7 +113,7 @@
                         <a x-show="!deleteMode" href="{{ $module->url ?? '#' }}" 
                            target="{{ ($module->tab_type === 'new' || Str::startsWith($module->url, ['http://', 'https://'])) ? '_blank' : '_self' }}"
                            rel="{{ ($module->tab_type === 'new' || Str::startsWith($module->url, ['http://', 'https://'])) ? 'noopener noreferrer' : '' }}"
-                           style="background-color: #2563eb;" class="w-full md:w-auto flex items-center justify-center gap-2 text-white px-6 py-2.5 rounded-lg hover:opacity-90 transition-all shadow-sm hover:shadow-md">
+                           class="w-full md:w-auto flex items-center justify-center gap-2 text-white px-6 py-2.5 rounded-lg transition-all shadow-sm hover:shadow-md bg-indigo-600 hover:bg-indigo-700">
                             <span class="text-base font-semibold text-white">Kunjungi</span>
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <path d="M18 13V19C18 19.5304 17.7893 20.0391 17.4142 20.4142C17.0391 20.7893 16.5304 21 16 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V8C3 7.46957 3.21071 6.96086 3.58579 6.58579C3.96086 6.21071 4.46957 6 5 6H11" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -124,7 +124,7 @@
 
                         <!-- Edit Button (Supervisor/Admin Only, Normal Mode) -->
                         @hasrole('Supervisor|Admin')
-                        <a x-show="!deleteMode" href="{{ route('integrasi-sistem.edit', $module->id) }}" style="background-color: #eab308;" class="w-full md:w-auto flex items-center justify-center gap-2 text-white px-6 py-2.5 rounded-lg hover:opacity-90 transition-all shadow-sm hover:shadow-md">
+                        <a x-show="!deleteMode" href="{{ route('integrasi-sistem.edit', $module->id) }}" class="w-full md:w-auto flex items-center justify-center gap-2 text-white px-6 py-2.5 rounded-lg transition-all shadow-sm hover:shadow-md bg-slate-600 hover:bg-slate-700">
                             <span class="text-base font-semibold text-white">Edit</span>
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-white">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
@@ -137,7 +137,7 @@
                         <form x-show="deleteMode" action="{{ route('integrasi-sistem.destroy', $module->id) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus modul ini?');" class="w-full" style="display: none;">
                             @csrf
                             @method('DELETE')
-                            <button type="submit" class="w-full md:w-auto flex items-center justify-center gap-2 text-white px-6 py-2.5 rounded-lg hover:opacity-90 transition-all shadow-sm hover:shadow-md bg-red-600">
+                            <button type="submit" class="w-full md:w-auto flex items-center justify-center gap-2 text-white px-6 py-2.5 rounded-lg transition-all shadow-sm hover:shadow-md bg-rose-600 hover:bg-rose-700">
                                 <span class="text-base font-semibold text-white">Hapus</span>
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
