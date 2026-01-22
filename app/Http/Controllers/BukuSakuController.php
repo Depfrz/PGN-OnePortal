@@ -151,8 +151,11 @@ class BukuSakuController extends Controller
 
     public function destroy(BukuSakuDocument $document)
     {
+        /** @var User $user */
+        $user = Auth::user();
+
         // Allow owner or Admin/Supervisor to delete
-        if ($document->user_id !== Auth::id() && !Auth::user()->hasAnyRole(['Admin', 'Supervisor'])) {
+        if ($document->user_id !== $user->id && !$user->hasAnyRole(['Admin', 'Supervisor'])) {
              return redirect()->back()->with('error', 'Anda tidak memiliki izin untuk menghapus dokumen ini.');
         }
 
@@ -258,6 +261,7 @@ class BukuSakuController extends Controller
     public function toggleFavorite($id)
     {
         $document = BukuSakuDocument::findOrFail($id);
+        /** @var User $user */
         $user = Auth::user();
 
         if ($user->favoriteDocuments()->where('buku_saku_document_id', $id)->exists()) {
@@ -273,7 +277,9 @@ class BukuSakuController extends Controller
 
     public function favorites()
     {
-        $documents = Auth::user()->favoriteDocuments()->with('user')->orderBy('created_at', 'desc')->get();
+        /** @var User $user */
+        $user = Auth::user();
+        $documents = $user->favoriteDocuments()->with('user')->orderBy('created_at', 'desc')->get();
         return view('buku-saku.favorites', compact('documents'));
     }
 
