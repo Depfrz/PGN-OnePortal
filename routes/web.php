@@ -93,10 +93,16 @@ Route::middleware('auth')->group(function () {
         Route::get('/download/{document}', [App\Http\Controllers\BukuSakuController::class, 'download'])->name('download');
         Route::get('/preview/{document}', [App\Http\Controllers\BukuSakuController::class, 'preview'])->name('preview');
         
-        // Approval Workflow
+        // Approval Workflow (Now Management)
         Route::get('/approval', [App\Http\Controllers\BukuSakuController::class, 'approvalIndex'])->name('approval');
-        Route::patch('/{id}/approve', [App\Http\Controllers\BukuSakuController::class, 'approve'])->name('approve');
-        Route::patch('/{id}/reject', [App\Http\Controllers\BukuSakuController::class, 'reject'])->name('reject');
+        
+        // Tags Management
+        Route::post('/tags', [App\Http\Controllers\BukuSakuController::class, 'storeTag'])->name('tags.store');
+        Route::delete('/tags/{id}', [App\Http\Controllers\BukuSakuController::class, 'destroyTag'])->name('tags.destroy');
+
+        // Edit/Update
+        Route::get('/{id}/edit', [App\Http\Controllers\BukuSakuController::class, 'edit'])->name('edit');
+        Route::put('/{id}', [App\Http\Controllers\BukuSakuController::class, 'update'])->name('update');
         
         // Detail View (Must be last to avoid conflict with specific sub-routes)
         Route::get('/{document}', [App\Http\Controllers\BukuSakuController::class, 'show'])->name('show');

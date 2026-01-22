@@ -1,82 +1,95 @@
 <x-buku-saku-layout>
-    <div class="mb-6">
-        <h2 class="text-2xl font-bold text-gray-800">Selamat Datang, {{ Auth::user()->name }}</h2>
+    <div class="mb-4">
+        <h2 class="text-lg font-bold text-gray-800">Selamat Datang, {{ Auth::user()->name }}</h2>
     </div>
 
     <!-- Search Section -->
-    <div class="bg-white p-4 sm:p-6 rounded-lg shadow-sm mb-8">
-        <h3 class="text-lg font-semibold text-gray-800 mb-4">Pencarian Dokumen</h3>
-        <form action="{{ route('buku-saku.index') }}" method="GET" class="flex flex-col sm:flex-row gap-4">
+    <div class="bg-white p-3 sm:p-4 rounded-lg shadow-sm mb-6">
+        <h3 class="text-base font-semibold text-gray-800 mb-3">Pencarian Dokumen</h3>
+        <form action="{{ route('buku-saku.index') }}" method="GET" class="flex flex-col sm:flex-row gap-3">
             <div class="flex-1">
                 <input type="text" name="q" value="{{ $query ?? '' }}" 
-                    class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                    class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" 
                     placeholder="Cari dokumen relevan, misal: welder" required>
             </div>
-            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg shadow transition-colors w-full sm:w-auto">
+            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-5 rounded-lg shadow transition-colors w-full sm:w-auto text-sm">
                 Cari
             </button>
         </form>
     </div>
 
     @if($documents->isNotEmpty())
-        <div class="mb-4 text-sm text-gray-600">
+        <div class="mb-3 text-sm text-gray-600">
             @if($hasSearch && (!isset($resultsNotFound) || !$resultsNotFound))
                 Ditemukan {{ $documents->count() }} dokumen yang relevan.
             @else
                 Dokumen Terbaru ({{ $documents->count() }})
             @endif
         </div>
-        <div class="grid grid-cols-1 gap-4">
+        <div class="grid grid-cols-1 gap-3">
             @foreach($documents as $doc)
-                <div class="border rounded-lg p-4 hover:shadow-md transition-shadow flex items-start justify-between bg-white gap-4">
-                    <div class="flex items-start gap-4 flex-1 min-w-0">
+                <div class="border rounded-lg p-3 hover:shadow-md transition-shadow flex items-start justify-between bg-white gap-3">
+                    <div class="flex items-start gap-3 flex-1 min-w-0">
                         <div class="flex-1 min-w-0">
-                            <h3 class="font-bold text-lg text-gray-800 break-words">
+                            <h3 class="font-bold text-sm text-gray-800 break-words">
                                 <a href="{{ route('buku-saku.show', $doc->id) }}" class="hover:text-blue-600 hover:underline">
                                     {{ $doc->title }}
                                 </a>
                             </h3>
                             
                             <!-- Metadata -->
-                            <div class="flex flex-wrap items-center gap-2 text-sm text-gray-500 mb-2">
-                                <span class="uppercase bg-gray-100 px-2 py-0.5 rounded text-xs font-semibold">{{ $doc->file_type }}</span>
+                            <div class="flex flex-wrap items-center gap-2 text-xs text-gray-500 mb-1.5">
+                                <span class="uppercase bg-gray-100 px-1.5 py-0.5 rounded font-semibold">{{ $doc->file_type }}</span>
                                 <span class="hidden sm:inline">&bull;</span>
                                 <span>{{ $doc->file_size }}</span>
                                 <span class="hidden sm:inline">&bull;</span>
                                 <span>{{ $doc->created_at->diffForHumans() }}</span>
                             </div>
 
-                            <p class="text-sm text-gray-600 mb-2 line-clamp-2">{{ $doc->description }}</p>
+                            <p class="text-xs text-gray-600 mb-1.5 line-clamp-2">{{ $doc->description }}</p>
                             
-                            <!-- Tags above Status -->
+                            <!-- Tags above Validity -->
                             @if($doc->tags)
-                                <div class="mb-2 flex flex-wrap gap-1">
+                                <div class="mb-1.5 flex flex-wrap gap-1">
                                     @foreach(explode(',', $doc->tags) as $tag)
-                                        <span class="inline-block bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded">{{ trim($tag) }}</span>
+                                        <span class="inline-block bg-gray-100 text-gray-600 text-xs px-1.5 py-0.5 rounded">{{ trim($tag) }}</span>
                                     @endforeach
                                 </div>
                             @endif
                             
-                            <!-- Status -->
-                            <div class="text-sm font-medium text-gray-800">
-                                Status: <span class="{{ $doc->status == 'approved' ? 'text-green-600' : 'text-gray-600' }}">{{ $doc->status }}</span>
+                            <!-- Validity / Countdown -->
+                            <div class="text-xs font-medium mt-1">
+                                @if($doc->valid_until)
+                                    @php
+                                        $now = \Carbon\Carbon::now();
+                                        $diff = $now->diffInDays($doc->valid_until, false);
+                                        $isExpired = $diff < 0;
+                                        $color = $isExpired ? 'text-red-600' : ($diff < 365 ? ($diff < 30 ? 'text-red-500' : 'text-yellow-600') : 'text-green-600');
+                                        $countdownText = $isExpired ? 'Sudah Kadaluarsa' : ($diff . ' Hari Lagi');
+                                    @endphp
+                                    <span class="{{ $color }}">
+                                        Masa Berlaku: {{ $doc->valid_until->format('d M Y') }} ({{ $countdownText }})
+                                    </span>
+                                @else
+                                    <span class="text-gray-500">Masa Berlaku: -</span>
+                                @endif
                             </div>
                         </div>
                     </div>
-                    <div class="flex items-center gap-2 flex-shrink-0">
+                    <div class="flex items-center gap-1.5 flex-shrink-0">
                         <!-- Favorite Button -->
                         <form action="{{ route('buku-saku.toggle-favorite', $doc->id) }}" method="POST">
                             @csrf
-                            <button type="submit" class="p-2 rounded-full hover:bg-gray-100 {{ Auth::user()->favoriteDocuments->contains($doc->id) ? 'text-yellow-500' : 'text-gray-400' }}" title="Favorit">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 {{ Auth::user()->favoriteDocuments->contains($doc->id) ? 'fill-current' : 'fill-none' }}" viewBox="0 0 24 24" stroke="currentColor">
+                            <button type="submit" class="p-1.5 rounded-full hover:bg-gray-100 {{ Auth::user()->favoriteDocuments->contains($doc->id) ? 'text-yellow-500' : 'text-gray-400' }}" title="Favorit">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 {{ Auth::user()->favoriteDocuments->contains($doc->id) ? 'fill-current' : 'fill-none' }}" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
                                 </svg>
                             </button>
                         </form>
 
                         <!-- Download Button -->
-                        <a href="{{ route('buku-saku.download', $doc->id) }}" class="p-2 rounded-full hover:bg-gray-100 text-blue-600" title="Unduh">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <a href="{{ route('buku-saku.download', $doc->id) }}" class="p-1.5 rounded-full hover:bg-gray-100 text-blue-600" title="Unduh">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                             </svg>
                         </a>

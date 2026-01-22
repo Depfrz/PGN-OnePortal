@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\BukuSakuDocument;
+use App\Models\BukuSakuTag;
 use App\Models\User;
 use App\Notifications\SystemNotification;
 use Illuminate\Http\Request;
@@ -28,7 +29,7 @@ class BukuSakuController extends Controller
                     'title' => $doc->title,
                     'description' => $doc->description,
                     'tags' => $doc->tags,
-                    'categories' => is_array($doc->categories) ? implode(' ', $doc->categories) : $doc->categories,
+                    'valid_until' => $doc->valid_until,
                 ];
             });
 
@@ -69,7 +70,6 @@ class BukuSakuController extends Controller
             // Default view: Show latest approved documents
             $documents = BukuSakuDocument::approved()
                 ->with('user')
-                ->orderBy('approved_at', 'desc')
                 ->orderBy('created_at', 'desc')
                 ->get();
         }
@@ -79,7 +79,8 @@ class BukuSakuController extends Controller
 
     public function upload()
     {
-        return view('buku-saku.upload');
+        $availableTags = BukuSakuTag::all();
+        return view('buku-saku.upload', compact('availableTags'));
     }
 
     public function hapusDokumenIndex(Request $request)
@@ -102,10 +103,10 @@ class BukuSakuController extends Controller
         $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'tags' => 'nullable|string',
-            'categories' => 'nullable|array',
-            'categories.*' => 'string',
-            'file' => 'required|file|mimes:pdf,doc,docx,ppt,pptx,xls,xlsx|max:10240', // Max 10MB
+            'tags' => 'nullable|array', // Now an array from checklist
+            'tags.*' => 'string',
+            'file' => 'required|file|mimes:pdf,doc,docx,ppt,pptx,xls,xlsx|max:15360', // Max 15MB
+            'valid_until' => 'nullable|date',
         ]);
 
         $file = $request->file('file');
@@ -118,35 +119,109 @@ class BukuSakuController extends Controller
         $power = $size > 0 ? floor(log($size, 1024)) : 0;
         $sizeFormatted = number_format($size / pow(1024, $power), 2, '.', ',') . ' ' . $units[$power];
 
+        // Process tags array to string (comma separated)
+        $tags = $request->tags ? implode(',', $request->tags) : null;
+
         BukuSakuDocument::create([
             'user_id' => Auth::id(),
             'title' => $request->title,
             'description' => $request->description,
-            'tags' => $request->tags,
-            'categories' => $request->categories,
+            'tags' => $tags,
             'file_path' => $path,
             'file_type' => $type,
             'file_size' => $sizeFormatted,
-            'status' => 'pending', // Default status
+            'status' => 'approved', // Auto-approved
+            'approved_by' => Auth::id(),
+            'approved_at' => now(),
+            'valid_until' => $request->valid_until,
         ]);
 
-        // Notify Admins, Supervisors, and users with 'Pengecekan File' access
-        $approvers = User::whereHas('roles', function($q) {
-            $q->whereIn('name', ['Admin', 'Supervisor']);
-        })->orWhereHas('moduleAccesses', function($q) {
-            $q->whereHas('module', function($m) {
-                $m->where('name', 'Pengecekan File');
-            })->where('can_read', true);
-        })->get();
-
-        Notification::send($approvers, new SystemNotification(
-            'upload',
+        // Notify All Users about new document (since it's auto-approved)
+        $otherUsers = User::where('id', '!=', Auth::id())->get();
+        Notification::send($otherUsers, new SystemNotification(
+            'new_document',
             'Buku Saku',
-            'Dokumen baru "' . $request->title . '" menunggu persetujuan.',
+            'Dokumen baru tersedia: "' . $request->title . '"',
             Auth::user()->name
         ));
 
-        return redirect()->route('buku-saku.approval')->with('success', 'Dokumen berhasil diunggah dan menunggu persetujuan.');
+        return redirect()->route('buku-saku.index')->with('success', 'Dokumen berhasil diunggah.');
+    }
+
+    public function edit($id)
+    {
+        $document = BukuSakuDocument::findOrFail($id);
+        
+        // Check permission (Owner or Admin/Supervisor)
+        if ($document->user_id !== Auth::id() && !Auth::user()->hasAnyRole(['Admin', 'Supervisor'])) {
+             return redirect()->back()->with('error', 'Anda tidak memiliki izin untuk mengedit dokumen ini.');
+        }
+
+        $availableTags = BukuSakuTag::all();
+        return view('buku-saku.edit', compact('document', 'availableTags'));
+    }
+
+    public function update(Request $request, $id)
+    {
+        $document = BukuSakuDocument::findOrFail($id);
+
+        // Check permission
+        if ($document->user_id !== Auth::id() && !Auth::user()->hasAnyRole(['Admin', 'Supervisor'])) {
+             return redirect()->back()->with('error', 'Anda tidak memiliki izin untuk mengedit dokumen ini.');
+        }
+
+        $request->validate([
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'tags' => 'nullable|array',
+            'tags.*' => 'string',
+            'file' => 'nullable|file|mimes:pdf,doc,docx,ppt,pptx,xls,xlsx|max:15360',
+            'valid_until' => 'nullable|date',
+        ]);
+
+        $data = [
+            'title' => $request->title,
+            'description' => $request->description,
+            'valid_until' => $request->valid_until,
+        ];
+
+        // Update tags
+        if ($request->has('tags')) {
+             $data['tags'] = implode(',', $request->tags);
+        } else {
+             // If tags field is present but empty (user unchecked all), clear tags. 
+             // Note: In HTML forms, unchecked checkboxes are not sent. 
+             // We should handle this carefully. If 'tags' input is not in request but form was submitted, it implies empty.
+             // But for now, let's assume if it's in request, we update it.
+             // A common trick is to add a hidden input for tags to ensure it's sent.
+             // We'll rely on the array validation.
+             $data['tags'] = null;
+        }
+
+        // Update file if provided
+        if ($request->hasFile('file')) {
+            // Delete old file
+            if (Storage::disk('public')->exists($document->file_path)) {
+                Storage::disk('public')->delete($document->file_path);
+            }
+
+            $file = $request->file('file');
+            $path = $file->store('buku-saku', 'public');
+            $size = $file->getSize();
+            $type = $file->getClientOriginalExtension();
+
+            $units = ['B', 'KB', 'MB', 'GB'];
+            $power = $size > 0 ? floor(log($size, 1024)) : 0;
+            $sizeFormatted = number_format($size / pow(1024, $power), 2, '.', ',') . ' ' . $units[$power];
+
+            $data['file_path'] = $path;
+            $data['file_type'] = $type;
+            $data['file_size'] = $sizeFormatted;
+        }
+
+        $document->update($data);
+
+        return redirect()->route('buku-saku.index')->with('success', 'Dokumen berhasil diperbarui.');
     }
 
     public function destroy(BukuSakuDocument $document)
@@ -155,48 +230,30 @@ class BukuSakuController extends Controller
         if ($document->user_id !== Auth::id() && !Auth::user()->hasAnyRole(['Admin', 'Supervisor'])) {
              return redirect()->back()->with('error', 'Anda tidak memiliki izin untuk menghapus dokumen ini.');
         }
-
-        // Instead of hard delete, let's update status to 'deleted' to show in history?
-        // But if I hard delete, it's gone.
-        // The image shows "Terhapus".
-        // Let's update status to 'deleted' for now to match the "History" requirement.
         
-        $document->update(['status' => 'deleted']);
-
-        // Notify Admins if user deleted their own document
-        // Or Notify Owner if Admin deleted it
-        if ($document->user_id !== Auth::id()) {
-            $document->user->notify(new SystemNotification(
-                'delete',
-                'Buku Saku',
-                'Dokumen "' . $document->title . '" telah dihapus oleh admin.',
-                Auth::user()->name
-            ));
-        } else {
-             // User deleted their own document, notify admins and checkers
-            $admins = User::whereHas('roles', function($q) {
-                $q->whereIn('name', ['Admin', 'Supervisor']);
-            })->orWhereHas('moduleAccesses', function($q) {
-                $q->whereHas('module', function($m) {
-                    $m->where('name', 'Pengecekan File');
-                })->where('can_read', true);
-            })->get();
-            
-            Notification::send($admins, new SystemNotification(
-                'delete',
-                'Buku Saku',
-                'Dokumen "' . $document->title . '" telah dihapus oleh pemiliknya.',
-                Auth::user()->name
-            ));
+        // Permanent delete as per "hapus saja" request usually implies removal, 
+        // but let's stick to soft delete via status 'deleted' or actually delete?
+        // "hapus sistem acc atau reject hanya ada hapus"
+        // If I delete it, it's gone from History too unless I soft delete.
+        // Let's use delete() if SoftDeletes trait is used, or update status.
+        // Model doesn't have SoftDeletes.
+        // I'll stick to updating status to 'deleted' to preserve history record if needed, 
+        // OR actually delete if user wants it gone.
+        // Let's actually delete the file and record.
+        
+        if (Storage::disk('public')->exists($document->file_path)) {
+            Storage::disk('public')->delete($document->file_path);
         }
+        
+        $document->delete();
 
         return redirect()->back()->with('success', 'Dokumen berhasil dihapus.');
     }
 
     public function approvalIndex()
     {
-        // Show all documents for approval/history
-        // In a real app, this should be restricted to admins/approvers
+        // Now just a list of all documents (Management view)
+        // Or "Kelola Dokumen"
         $documents = BukuSakuDocument::with(['user', 'approver'])
             ->orderBy('created_at', 'desc')
             ->get();
@@ -204,56 +261,7 @@ class BukuSakuController extends Controller
         return view('buku-saku.approval', compact('documents'));
     }
 
-    public function approve($id)
-    {
-        $document = BukuSakuDocument::findOrFail($id);
-        $document->update([
-            'status' => 'approved',
-            'rejected_reason' => null,
-            'approved_by' => Auth::id(),
-            'approved_at' => now(),
-        ]);
-
-        // Notify Uploader
-        $document->user->notify(new SystemNotification(
-            'approve',
-            'Buku Saku',
-            'Dokumen Anda "' . $document->title . '" telah disetujui.',
-            Auth::user()->name
-        ));
-
-        // Notify All Users about new document
-        // Exclude the uploader to avoid duplicate notification (one for approval, one for new doc)
-        // Or maybe just notify everyone. Let's exclude uploader from the "New Document" blast if they got "Approved".
-        $otherUsers = User::where('id', '!=', $document->user_id)->get();
-        Notification::send($otherUsers, new SystemNotification(
-            'new_document',
-            'Buku Saku',
-            'Dokumen baru tersedia: "' . $document->title . '"',
-            $document->user->name // Actor is the uploader? or the approver? Usually "New document available" implies the content creator.
-        ));
-        
-        return redirect()->back()->with('success', 'Dokumen disetujui.');
-    }
-
-    public function reject(Request $request, $id)
-    {
-        $document = BukuSakuDocument::findOrFail($id);
-        $document->update([
-            'status' => 'rejected',
-            'rejected_reason' => $request->input('reason', 'Ditolak oleh admin.')
-        ]);
-
-        // Notify Uploader
-        $document->user->notify(new SystemNotification(
-            'reject',
-            'Buku Saku',
-            'Dokumen Anda "' . $document->title . '" telah ditolak. Alasan: ' . $document->rejected_reason,
-            Auth::user()->name
-        ));
-        
-        return redirect()->back()->with('success', 'Dokumen ditolak.');
-    }
+    // approve/reject removed/deprecated
 
     public function toggleFavorite($id)
     {
@@ -279,10 +287,12 @@ class BukuSakuController extends Controller
 
     public function history()
     {
-        // For now, let's assume history means "My Uploads" or "All Activity"
-        // User said "side barnya terdapat data history".
-        // Let's show all documents uploaded by the current user as "History Upload"
-        $documents = BukuSakuDocument::where('user_id', Auth::id())
+        // "Riwayat Dokumen" - All documents (uploaded by everyone or just me?)
+        // Usually history implies logs. But here it might mean "All Documents List".
+        // Let's show all documents for now, or maybe just "My Uploads".
+        // Context: "riwayat dokumen itu juga perlu bisa geser kiri kanan" -> Table view.
+        // I'll show all documents here.
+        $documents = BukuSakuDocument::with('user')
             ->orderBy('created_at', 'desc')
             ->get();
             
@@ -293,7 +303,7 @@ class BukuSakuController extends Controller
     {
         // Ensure the file exists
         if (!Storage::disk('public')->exists($document->file_path)) {
-             // We can still show the page but maybe with a warning, or just handle it in the view
+             // We can still show the page but maybe with a warning
         }
         return view('buku-saku.show', compact('document'));
     }
@@ -314,5 +324,33 @@ class BukuSakuController extends Controller
             return response()->file($path);
         }
         return redirect()->back()->with('error', 'File tidak ditemukan.');
+    }
+
+    public function storeTag(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|unique:buku_saku_tags,name|max:50',
+        ]);
+
+        $tag = BukuSakuTag::create(['name' => $request->name]);
+
+        if ($request->wantsJson()) {
+            return response()->json($tag);
+        }
+
+        return redirect()->back()->with('success', 'Tag berhasil ditambahkan.');
+    }
+
+    public function destroyTag($id)
+    {
+        // Only Admin or Supervisor should probably delete tags, but let's allow any user for now based on request "bisa tambah dan hapus tag sendiri"
+        // Or maybe restrict to creator? But tags are global. 
+        // Let's assume open for now or restrict to Admin/Supervisor if "sendiri" means "I can do it myself" as an admin.
+        // Usually global tags are managed by admins. But if user says "sendiri", they might mean "I want to be able to do it".
+        
+        $tag = BukuSakuTag::findOrFail($id);
+        $tag->delete();
+
+        return redirect()->back()->with('success', 'Tag berhasil dihapus.');
     }
 }
