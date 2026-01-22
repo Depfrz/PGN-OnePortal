@@ -14,7 +14,7 @@ class BukuSakuDocument extends Model
         'title',
         'description',
         'tags',
-        'categories',
+        // 'categories', // Removed
         'file_path',
         'file_type',
         'file_size',
@@ -22,11 +22,13 @@ class BukuSakuDocument extends Model
         'rejected_reason',
         'approved_by',
         'approved_at',
+        'valid_until',
     ];
 
     protected $casts = [
-        'categories' => 'array',
+        // 'categories' => 'array', // Removed
         'approved_at' => 'datetime',
+        'valid_until' => 'date',
     ];
 
     public function scopeApproved($query)
