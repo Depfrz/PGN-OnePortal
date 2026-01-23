@@ -89,7 +89,7 @@
                                         </span>
                                     @elseif($diffInYears <= 1)
                                         <span class="text-red-600">
-                                            Status: <span class="countdown-timer" data-target="{{ $doc->valid_until->toIso8601String() }}">Hitung mundur...</span>
+                                            Status: <span class="countdown-timer" data-target="{{ $doc->valid_until->toIso8601String() }}">Hitung mundur...</span> ({{ $doc->valid_until->format('d M Y') }})
                                         </span>
                                     @else
                                         <span class="text-green-600">
