@@ -1,5 +1,85 @@
 <x-dashboard-layout>
-    <div x-data="{ deleteMode: false }" class="bg-white dark:bg-gray-800 rounded-[10px] p-6 min-h-[600px] flex flex-col transition-colors duration-200">
+    <div x-data="{ 
+        deleteMode: false,
+        showDeleteModal: false,
+        moduleToDelete: null,
+        confirmDelete(module) {
+            this.moduleToDelete = module;
+            this.showDeleteModal = true;
+        },
+        submitDelete() {
+            if (this.moduleToDelete) {
+                document.getElementById('delete-form-' + this.moduleToDelete.id).submit();
+            }
+        }
+    }" class="bg-white dark:bg-gray-800 rounded-[10px] p-6 min-h-[600px] flex flex-col transition-colors duration-200">
+    
+        <!-- Delete Confirmation Modal -->
+        <div x-show="showDeleteModal" 
+             style="display: none;"
+             class="fixed inset-0 z-50 overflow-y-auto"
+             aria-labelledby="modal-title" 
+             role="dialog" 
+             aria-modal="true">
+            
+            <!-- Backdrop -->
+            <div x-show="showDeleteModal"
+                 x-transition:enter="ease-out duration-300"
+                 x-transition:enter-start="opacity-0"
+                 x-transition:enter-end="opacity-100"
+                 x-transition:leave="ease-in duration-200"
+                 x-transition:leave-start="opacity-100"
+                 x-transition:leave-end="opacity-0"
+                 class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity backdrop-blur-sm"
+                 @click="showDeleteModal = false"></div>
+
+            <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+                <div x-show="showDeleteModal"
+                     x-transition:enter="ease-out duration-300"
+                     x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                     x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+                     x-transition:leave="ease-in duration-200"
+                     x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+                     x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                     @click.away="showDeleteModal = false"
+                     @keydown.escape.window="showDeleteModal = false"
+                     class="relative transform overflow-hidden rounded-lg bg-white dark:bg-gray-800 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg border border-gray-100 dark:border-gray-700">
+                    
+                    <div class="bg-white dark:bg-gray-800 px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+                        <div class="sm:flex sm:items-start">
+                            <div class="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10 ring-8 ring-red-50 dark:bg-red-900/20 dark:ring-red-900/10">
+                                <svg class="h-6 w-6 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                                </svg>
+                            </div>
+                            <div class="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left w-full">
+                                <h3 class="text-lg font-semibold leading-6 text-gray-900 dark:text-white" id="modal-title">Hapus Modul</h3>
+                                <div class="mt-2">
+                                    <p class="text-sm text-gray-500 dark:text-gray-400">
+                                        Apakah Anda yakin ingin menghapus modul <span x-text="moduleToDelete?.name" class="font-bold text-gray-800 dark:text-gray-200"></span>?
+                                    </p>
+                                    <p class="text-sm text-red-600 dark:text-red-400 mt-2 font-medium bg-red-50 dark:bg-red-900/20 p-2 rounded-md border border-red-100 dark:border-red-900/30">
+                                        ⚠️ Tindakan ini tidak dapat dibatalkan.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 dark:bg-gray-700/50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6 gap-2">
+                        <button type="button" 
+                                @click="submitDelete()"
+                                class="inline-flex w-full justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 sm:ml-3 sm:w-auto transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2">
+                            Hapus
+                        </button>
+                        <button type="button" 
+                                @click="showDeleteModal = false"
+                                class="mt-3 inline-flex w-full justify-center rounded-md bg-white dark:bg-gray-700 px-3 py-2 text-sm font-semibold text-gray-900 dark:text-gray-200 shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 sm:mt-0 sm:w-auto transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400">
+                            Batal
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         @if(session('success'))
             <div class="mb-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative" role="alert">
@@ -134,7 +214,13 @@
 
                         <!-- Delete Mode: Delete Button -->
                         @hasrole('Supervisor|Admin')
-                        <form x-show="deleteMode" action="{{ route('integrasi-sistem.destroy', $module->id) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus modul ini?');" class="w-full" style="display: none;">
+                        <form x-show="deleteMode" 
+                              id="delete-form-{{ $module->id }}" 
+                              action="{{ route('integrasi-sistem.destroy', $module->id) }}" 
+                              method="POST" 
+                              @submit.prevent="confirmDelete({{ json_encode(['id' => $module->id, 'name' => $module->name]) }})" 
+                              class="w-full" 
+                              style="display: none;">
                             @csrf
                             @method('DELETE')
                             <button type="submit" class="w-full md:w-auto flex items-center justify-center gap-2 text-white px-6 py-2.5 rounded-lg hover:opacity-90 transition-all shadow-sm hover:shadow-md bg-red-600">
