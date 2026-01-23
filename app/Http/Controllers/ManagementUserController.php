@@ -24,6 +24,28 @@ class ManagementUserController extends Controller
         }
 
         $users = User::with(['roles', 'moduleAccesses.module'])->get()->map(function($user) {
+            $listPengawasanAccess = $user->moduleAccesses
+                ->first(fn($ma) => $ma->module && $ma->module->slug === 'list-pengawasan');
+
+            $defaultLpPermissions = [
+                'tambah_proyek' => true,
+                'nama_proyek' => true,
+                'deadline' => true,
+                'status' => true,
+                'keterangan' => true,
+                'edit_keterangan' => true,
+                'bukti' => true,
+            ];
+
+            $lpPermissions = $defaultLpPermissions;
+
+            if ($listPengawasanAccess && is_array($listPengawasanAccess->extra_permissions['list_pengawasan'] ?? null)) {
+                $lpPermissions = array_merge(
+                    $defaultLpPermissions,
+                    $listPengawasanAccess->extra_permissions['list_pengawasan']
+                );
+            }
+
             return [
                 'id' => $user->id,
                 'name' => $user->name,
@@ -34,6 +56,7 @@ class ManagementUserController extends Controller
                 'status' => 'Active', // Static for now
                 'hak_akses' => $user->moduleAccesses->map(fn($ma) => $ma->module->name)->values()->toArray(),
                 'dashboard_access' => $user->moduleAccesses->filter(fn($ma) => $ma->show_on_dashboard)->map(fn($ma) => $ma->module->name)->values()->toArray(),
+                'list_pengawasan_permissions' => $lpPermissions,
             ];
         });
 
@@ -102,9 +125,15 @@ class ManagementUserController extends Controller
             'hak_akses.*' => ['exists:modules,name'],
             'dashboard_access' => ['array'],
             'dashboard_access.*' => ['exists:modules,name'],
+            'list_pengawasan_permissions' => ['array'],
         ]);
 
-        $this->syncAccess($user, $request->hak_akses ?? [], $request->dashboard_access ?? []);
+        $this->syncAccess(
+            $user,
+            $request->hak_akses ?? [],
+            $request->dashboard_access ?? [],
+            $request->list_pengawasan_permissions ?? []
+        );
 
         AuditService::log(Auth::user(), 'update', 'Management User', "Memperbarui hak akses user: {$user->name}");
 
@@ -139,7 +168,7 @@ class ManagementUserController extends Controller
         return response()->json(['message' => 'User deleted successfully']);
     }
 
-    private function syncAccess(User $user, array $moduleNames, array $dashboardModuleNames = [])
+    private function syncAccess(User $user, array $moduleNames, array $dashboardModuleNames = [], array $listPengawasanPermissions = [])
     {
         $modules = Module::whereIn('name', $moduleNames)->get();
         
@@ -161,6 +190,22 @@ class ManagementUserController extends Controller
                 $showOnDashboard = false;
             }
 
+            $extraPermissions = null;
+
+            if ($module->name === 'List Pengawasan') {
+                $extraPermissions = [
+                    'list_pengawasan' => array_merge([
+                        'tambah_proyek' => false,
+                        'nama_proyek' => false,
+                        'deadline' => false,
+                        'status' => false,
+                        'keterangan' => false,
+                        'edit_keterangan' => false,
+                        'bukti' => false,
+                    ], $listPengawasanPermissions),
+                ];
+            }
+
             ModuleAccess::create([
                 'user_id' => $user->id,
                 'module_id' => $module->id,
@@ -168,6 +213,7 @@ class ManagementUserController extends Controller
                 'can_write' => true,
                 'can_delete' => true,
                 'show_on_dashboard' => $showOnDashboard,
+                'extra_permissions' => $extraPermissions,
             ]);
         }
     }

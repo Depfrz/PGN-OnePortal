@@ -1,6 +1,7 @@
 <x-dashboard-layout>
     <div x-data="{
         canWrite: {{ Js::from($canWrite ?? false) }},
+        lpPerms: {{ Js::from($lpPermissions ?? []) }},
         search: '',
         statusFilter: 'all',
         sortBy: 'created_desc',
@@ -23,17 +24,22 @@
         editingDeadlineId: null,
         editDeadline: '',
         statusMenu: { open: false, x: 0, y: 0, item: null },
-        newPengawas: { nama: '', status: 'On Progress', deadline: '', keterangan: [], new_keterangan: '' },
+        newPengawas: { nama: '', status: 'On Progress', deadline: '', keterangan: [], new_keterangan: '', pengawas_users: [] },
+        managePengawasUserModal: false,
+        selectedPengawasUserItem: null,
+        selectedPengawasUserAccount: null,
+        replacePengawasUserId: '',
         selectedBuktiItem: null,
         items: {{ Js::from($items) }},
         options: {{ Js::from($options) }},
+        users: {{ Js::from($users ?? []) }},
         openAdd() {
-            if (!this.canWrite) return;
-            this.newPengawas = { nama: '', status: 'On Progress', deadline: '', keterangan: [], new_keterangan: '' };
+            if (!this.canWrite || !this.lpPerms.tambah_proyek) return;
+            this.newPengawas = { nama: '', status: 'On Progress', deadline: '', keterangan: [], new_keterangan: '', pengawas_users: [] };
             this.addModal = true;
         },
         addNewKeteranganToForm() {
-            if (!this.canWrite) return;
+            if (!this.canWrite || !this.lpPerms.edit_keterangan) return;
             const label = this.newPengawas.new_keterangan?.trim();
             if (!label) return;
             if (!this.options.includes(label)) this.options.push(label);
@@ -47,7 +53,7 @@
             this.toast.timeoutId = setTimeout(() => { this.toast.show = false; }, 2200);
         },
         async savePengawas() {
-            if (!this.canWrite) return;
+            if (!this.canWrite || !this.lpPerms.tambah_proyek) return;
             try {
                 const response = await fetch('/list-pengawasan', {
                     method: 'POST',
@@ -59,7 +65,8 @@
                         nama: this.newPengawas.nama,
                         status: this.newPengawas.status,
                         deadline: this.newPengawas.deadline || null,
-                        keterangan: this.newPengawas.keterangan
+                        keterangan: this.newPengawas.keterangan,
+                        pengawas_users: this.newPengawas.pengawas_users
                     })
                 });
                 if (response.ok) {
@@ -74,6 +81,7 @@
                         deadline_display: deadlineDisplay,
                         status: data.status || 'On Progress',
                         keterangan: [...this.newPengawas.keterangan],
+                        pengawas_users: data.pengawas_users || [],
                         bukti: { path: null, name: null, mime: null, size: null, uploaded_at: null, url: null }
                     });
                     this.addModal = false;
@@ -87,7 +95,7 @@
             }
         },
         async setStatus(item, status) {
-            if (!this.canWrite) return;
+            if (!this.canWrite || !this.lpPerms.status) return;
             const previous = item.status;
             item.status = status;
             try {
@@ -116,7 +124,7 @@
             return { label: 'On Progress', cls: 'bg-amber-600 text-white hover:bg-amber-700' };
         },
         openStatusMenu(e, item) {
-            if (!this.canWrite) return;
+            if (!this.canWrite || !this.lpPerms.status) return;
             const rect = e.currentTarget.getBoundingClientRect();
             const menuWidth = 176;
             const menuHeight = 156;
@@ -137,7 +145,7 @@
             this.statusMenu = { open: false, x: 0, y: 0, item: null };
         },
         startEdit(item) {
-            if (!this.canWrite) return;
+            if (!this.canWrite || !this.lpPerms.nama_proyek) return;
             this.editingId = item.id;
             this.editPengawas = { nama: item.nama };
         },
@@ -146,7 +154,7 @@
             this.editPengawas = { nama: '' };
         },
         async saveEdit(item) {
-            if (!this.canWrite) return;
+            if (!this.canWrite || !this.lpPerms.nama_proyek) return;
             const payload = {
                 nama: this.editPengawas.nama?.trim() || ''
             };
@@ -178,8 +186,89 @@
                 alert('Terjadi kesalahan sistem');
             }
         },
-        openEditKeterangan(item) {
+        openManagePengawasUser(item, user) {
             if (!this.canWrite) return;
+            this.selectedPengawasUserItem = item;
+            this.selectedPengawasUserAccount = user;
+            this.replacePengawasUserId = user?.id || '';
+            this.managePengawasUserModal = true;
+        },
+        closeManagePengawasUser() {
+            this.managePengawasUserModal = false;
+            this.selectedPengawasUserItem = null;
+            this.selectedPengawasUserAccount = null;
+            this.replacePengawasUserId = '';
+        },
+        async replacePengawasUser() {
+            if (!this.canWrite) return;
+            const item = this.selectedPengawasUserItem;
+            const account = this.selectedPengawasUserAccount;
+            const newUserId = Number(this.replacePengawasUserId);
+            if (!item || !account) return;
+            if (!newUserId) {
+                this.showToast('Pilih pengawas baru');
+                return;
+            }
+            if (newUserId === account.id) {
+                this.showToast('Pilih pengawas yang berbeda');
+                return;
+            }
+            try {
+                const response = await fetch(`/list-pengawasan/${item.id}/pengawas-users`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
+                    },
+                    body: JSON.stringify({
+                        old_user_id: account.id,
+                        new_user_id: newUserId
+                    })
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    item.pengawas_users = data.pengawas_users || [];
+                    this.closeManagePengawasUser();
+                    this.showToast('Pengawas berhasil diperbarui');
+                } else {
+                    const d = await response.json().catch(() => ({}));
+                    alert(d.message || 'Gagal memperbarui pengawas');
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Terjadi kesalahan sistem');
+            }
+        },
+        async removePengawasUser() {
+            if (!this.canWrite) return;
+            const item = this.selectedPengawasUserItem;
+            const account = this.selectedPengawasUserAccount;
+            if (!item || !account) return;
+            try {
+                const response = await fetch(`/list-pengawasan/${item.id}/pengawas-users`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
+                    },
+                    body: JSON.stringify({ user_id: account.id })
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    item.pengawas_users = data.pengawas_users || [];
+                    this.closeManagePengawasUser();
+                    this.showToast('Pengawas berhasil dihapus');
+                } else {
+                    const d = await response.json().catch(() => ({}));
+                    alert(d.message || 'Gagal menghapus pengawas');
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Terjadi kesalahan sistem');
+            }
+        },
+        openEditKeterangan(item) {
+            if (!this.canWrite || !this.lpPerms.keterangan) return;
             this.selectedPengawas = JSON.parse(JSON.stringify(item));
             this.selectedKeterangan = [...item.keterangan];
             this.newLabel = '';
@@ -204,14 +293,14 @@
             }));
         },
         openRenameOption(name) {
-            if (!this.canWrite) return;
+            if (!this.canWrite || !this.lpPerms.edit_keterangan) return;
             if (!name) return;
             this.renameOptionOldName = name;
             this.renameOptionNewName = name;
             this.renameOptionModal = true;
         },
         async confirmRenameOption() {
-            if (!this.canWrite) return;
+            if (!this.canWrite || !this.lpPerms.edit_keterangan) return;
             const oldName = this.renameOptionOldName;
             const newName = this.renameOptionNewName?.trim() || '';
             if (!oldName) return;
@@ -271,13 +360,13 @@
             }
         },
         openDeleteOption(name) {
-            if (!this.canWrite) return;
+            if (!this.canWrite || !this.lpPerms.edit_keterangan) return;
             if (!name) return;
             this.deleteOptionName = name;
             this.deleteOptionModal = true;
         },
         async confirmDeleteOption() {
-            if (!this.canWrite) return;
+            if (!this.canWrite || !this.lpPerms.edit_keterangan) return;
             const name = this.deleteOptionName;
             if (!name) return;
             try {
@@ -335,15 +424,49 @@
             }
         },
         addNewKeteranganToEdit() {
-            if (!this.canWrite) return;
+            if (!this.canWrite || !this.lpPerms.edit_keterangan) return;
             const label = this.newLabel?.trim();
             if (!label) return;
             if (!this.options.includes(label)) this.options.push(label);
             if (!this.selectedKeterangan.includes(label)) this.selectedKeterangan.push(label);
             this.newLabel = '';
         },
+        async toggleKeteranganFromTable(item, label) {
+            if (!this.canWrite || !this.lpPerms.keterangan) return;
+            const current = Array.isArray(item.keterangan) ? [...item.keterangan] : [];
+            const exists = current.includes(label);
+            const next = exists ? current.filter(l => l !== label) : [...current, label];
+
+            const previous = [...current];
+            item.keterangan = next;
+
+            try {
+                const response = await fetch(`/list-pengawasan/${item.id}/keterangan`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
+                    },
+                    body: JSON.stringify({ keterangan: next })
+                });
+                if (!response.ok) {
+                    item.keterangan = previous;
+                    const d = await response.json().catch(() => ({}));
+                    this.showToast(d.message || 'Gagal menyimpan keterangan');
+                } else {
+                    this.showToast('Keterangan diperbarui');
+                }
+            } catch (e) {
+                console.error(e);
+                item.keterangan = previous;
+                this.showToast('Terjadi kesalahan sistem');
+            }
+        },
         async saveKeterangan() {
             if (!this.canWrite) return;
+            const cleaned = (this.selectedKeterangan || [])
+                .map(label => (typeof label === 'string' ? label.trim() : ''))
+                .filter(Boolean);
             try {
                 const response = await fetch(`/list-pengawasan/${this.selectedPengawas.id}/keterangan`, {
                     method: 'PATCH',
@@ -351,11 +474,18 @@
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
                     },
-                    body: JSON.stringify({ keterangan: this.selectedKeterangan })
+                    body: JSON.stringify({ keterangan: cleaned })
                 });
                 if (response.ok) {
-                    const idx = this.items.findIndex(i => i.id === this.selectedPengawas.id);
-                    if (idx !== -1) this.items[idx].keterangan = [...this.selectedKeterangan];
+                    const data = await response.json().catch(() => ({}));
+                    const updated = Array.isArray(data.keterangan) ? data.keterangan : cleaned;
+                    this.items = this.items.map(i => (i.id === this.selectedPengawas.id
+                        ? { ...i, keterangan: [...updated] }
+                        : i));
+                    if (this.selectedPengawas) {
+                        this.selectedPengawas.keterangan = [...updated];
+                    }
+                    this.selectedKeterangan = [...updated];
                     this.editKeteranganModal = false;
                     this.showToast('Keterangan berhasil disimpan');
                 } else {
@@ -372,17 +502,17 @@
             this.saveKeteranganConfirmModal = true;
         },
         async confirmSaveKeterangan() {
-            if (!this.canWrite) return;
+            if (!this.canWrite || !this.lpPerms.keterangan) return;
             this.saveKeteranganConfirmModal = false;
             await this.saveKeterangan();
         },
         openDelete(item) {
-            if (!this.canWrite) return;
+            if (!this.canWrite || !this.lpPerms.nama_proyek) return;
             this.selectedPengawas = item;
             this.deleteModal = true;
         },
         async deletePengawas() {
-            if (!this.canWrite) return;
+            if (!this.canWrite || !this.lpPerms.nama_proyek) return;
             try {
                 const response = await fetch(`/list-pengawasan/${this.selectedPengawas.id}`, {
                     method: 'DELETE',
@@ -418,7 +548,7 @@
             return !!mime && mime.startsWith('image/');
         },
         triggerUpload(item) {
-            if (!this.canWrite) return;
+            if (!this.canWrite || !this.lpPerms.bukti) return;
             const el = document.getElementById(`bukti-input-${item.id}`);
             if (el) el.click();
         },
@@ -458,7 +588,7 @@
             return data;
         },
         async uploadBukti(item, file) {
-            if (!this.canWrite) return;
+            if (!this.canWrite || !this.lpPerms.bukti) return;
             try {
                 const formData = new FormData();
                 formData.append('bukti', file);
@@ -483,19 +613,19 @@
             }
         },
         onBuktiChange(item, e) {
-            if (!this.canWrite) return;
+            if (!this.canWrite || !this.lpPerms.bukti) return;
             const file = e?.target?.files?.[0];
             if (!file) return;
             this.uploadBukti(item, file);
             e.target.value = '';
         },
         openDeleteBukti(item) {
-            if (!this.canWrite) return;
+            if (!this.canWrite || !this.lpPerms.bukti) return;
             this.selectedBuktiItem = item;
             this.deleteBuktiModal = true;
         },
         async confirmDeleteBukti() {
-            if (!this.canWrite) return;
+            if (!this.canWrite || !this.lpPerms.bukti) return;
             const item = this.selectedBuktiItem;
             if (!item) return;
             try {
@@ -521,7 +651,7 @@
             }
         },
         startEditDeadline(item) {
-            if (!this.canWrite) return;
+            if (!this.canWrite || !this.lpPerms.deadline) return;
             this.editingDeadlineId = item.id;
             this.editDeadline = item.deadline || '';
         },
@@ -600,7 +730,7 @@
                     <option value="deadline_asc">Deadline Terdekat</option>
                     <option value="deadline_desc">Deadline Terjauh</option>
                 </select>
-                <button x-show="canWrite" @click="openAdd()" class="w-full sm:w-auto bg-blue-600 text-white font-medium text-sm py-2.5 px-6 rounded-lg hover:bg-blue-700 transition-all shadow-md hover:shadow-lg inline-flex items-center justify-center">
+                <button x-show="canWrite && lpPerms.tambah_proyek" @click="openAdd()" class="w-full sm:w-auto bg-blue-600 text-white font-medium text-sm py-2.5 px-6 rounded-lg hover:bg-blue-700 transition-all shadow-md hover:shadow-lg inline-flex items-center justify-center">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
                     </svg>
@@ -639,9 +769,28 @@
                                             <div class="text-gray-900 font-semibold text-base dark:text-white truncate" x-text="item.nama"></div>
                                         </template>
                                         <div class="mt-1 text-xs text-gray-500 dark:text-gray-400" x-text="item.tanggal"></div>
+                                        <div class="mt-3">
+                                            <div class="text-[11px] font-semibold tracking-wider text-gray-500 uppercase dark:text-gray-400">Pengawas</div>
+                                            <div class="mt-2 space-y-2">
+                                                <template x-if="!item.pengawas_users || item.pengawas_users.length === 0">
+                                                    <div class="text-xs text-gray-500 dark:text-gray-400">-</div>
+                                                </template>
+                                                <template x-for="u in item.pengawas_users" :key="`mobile-pengawas-${item.id}-${u.id}`">
+                                                    <div class="min-w-0">
+                                                        <div class="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate" x-text="u.name"></div>
+                                                        <template x-if="canWrite">
+                                                            <button type="button" class="text-xs text-blue-600 hover:underline dark:text-blue-400" @click="openManagePengawasUser(item, u)" x-text="u.email"></button>
+                                                        </template>
+                                                        <template x-if="!canWrite">
+                                                            <div class="text-xs text-gray-500 dark:text-gray-400" x-text="u.email"></div>
+                                                        </template>
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </div>
                                     </div>
 
-                                    <div class="flex items-center gap-1 flex-shrink-0" x-show="canWrite">
+                                    <div class="flex items-center gap-1 flex-shrink-0" x-show="canWrite && lpPerms.nama_proyek">
                                         <template x-if="editingId !== item.id">
                                             <div class="flex items-center gap-1">
                                                 <button @click="startEdit(item)" class="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors dark:text-gray-400 dark:hover:text-blue-300 dark:hover:bg-blue-900/20" title="Edit Nama Proyek">
@@ -695,7 +844,7 @@
                                             <template x-if="editingDeadlineId !== item.id">
                                                 <div class="flex items-center justify-between gap-2">
                                                     <span class="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate" x-text="item.deadline_display || '-'"></span>
-                                                    <button x-show="canWrite" type="button" @click="startEditDeadline(item)" class="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors dark:text-gray-400 dark:hover:text-blue-300 dark:hover:bg-blue-900/20" title="Edit Deadline">
+                                                    <button x-show="canWrite && lpPerms.deadline" type="button" @click="startEditDeadline(item)" class="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors dark:text-gray-400 dark:hover:text-blue-300 dark:hover:bg-blue-900/20" title="Edit Deadline">
                                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
                                                             <path d="M21.731 2.269a2.625 2.625 0 00-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 000-3.712zM19.513 8.199l-3.712-3.712-12.15 12.15a5.25 5.25 0 00-1.32 2.214l-.8 2.685a.75.75 0 00.933.933l2.685-.8a5.25 5.25 0 002.214-1.32L19.513 8.2z" />
                                                         </svg>
@@ -787,6 +936,7 @@
                             <thead>
                                 <tr class="text-left">
                                     <th class="pb-2 font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider pl-4">Nama Proyek</th>
+                                    <th class="pb-2 font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[220px] pr-4">Pengawas</th>
                                     <th class="pb-2 font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[150px] pr-4">Tanggal & Waktu</th>
                                     <th class="pb-2 font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[180px] pr-4">Deadline</th>
                                     <th class="pb-2 font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[140px] pr-4">Status</th>
@@ -808,7 +958,7 @@
                                             </template>
                                         </div>
 
-                                        <div class="flex items-center gap-1 flex-shrink-0" x-show="canWrite">
+                                        <div class="flex items-center gap-1 flex-shrink-0" x-show="canWrite && lpPerms.nama_proyek">
                                             <template x-if="editingId !== item.id">
                                                 <div class="flex items-center gap-1">
                                                     <button @click="startEdit(item)" class="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors dark:text-gray-400 dark:hover:text-blue-300 dark:hover:bg-blue-900/20" title="Edit Nama Proyek">
@@ -841,6 +991,25 @@
                                     </div>
                                 </td>
 
+                                <td class="p-4 border-y border-gray-200 dark:border-gray-700 group-hover:border-blue-300 dark:group-hover:border-blue-700 transition-colors">
+                                    <div class="space-y-2">
+                                        <template x-if="!item.pengawas_users || item.pengawas_users.length === 0">
+                                            <div class="text-sm text-gray-500 dark:text-gray-400">-</div>
+                                        </template>
+                                        <template x-for="u in item.pengawas_users" :key="`pengawas-${item.id}-${u.id}`">
+                                            <div class="min-w-0">
+                                                <div class="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate" x-text="u.name"></div>
+                                                <template x-if="canWrite">
+                                                    <button type="button" class="text-xs text-blue-600 hover:underline dark:text-blue-400" @click="openManagePengawasUser(item, u)" x-text="u.email"></button>
+                                                </template>
+                                                <template x-if="!canWrite">
+                                                    <div class="text-xs text-gray-500 dark:text-gray-400" x-text="u.email"></div>
+                                                </template>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </td>
+
                                 <td class="p-4 text-sm text-gray-700 dark:text-gray-300 border-y border-gray-200 dark:border-gray-700 group-hover:border-blue-300 dark:group-hover:border-blue-700 transition-colors" x-text="item.tanggal"></td>
 
                                 <td class="p-4 border-y border-gray-200 dark:border-gray-700 group-hover:border-blue-300 dark:group-hover:border-blue-700 transition-colors">
@@ -862,7 +1031,7 @@
                                     <template x-if="editingDeadlineId !== item.id">
                                         <div class="flex items-center justify-between gap-2">
                                             <span class="text-gray-700 text-sm dark:text-gray-300 truncate" x-text="item.deadline_display || '-'"></span>
-                                            <button x-show="canWrite" type="button" @click="startEditDeadline(item)" class="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors dark:text-gray-400 dark:hover:text-blue-300 dark:hover:bg-blue-900/20" title="Edit Deadline">
+                                            <button x-show="canWrite && lpPerms.deadline" type="button" @click="startEditDeadline(item)" class="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors dark:text-gray-400 dark:hover:text-blue-300 dark:hover:bg-blue-900/20" title="Edit Deadline">
                                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
                                                     <path d="M21.731 2.269a2.625 2.625 0 00-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 000-3.712zM19.513 8.199l-3.712-3.712-12.15 12.15a5.25 5.25 0 00-1.32 2.214l-.8 2.685a.75.75 0 00.933.933l2.685-.8a5.25 5.25 0 002.214-1.32L19.513 8.2z" />
                                                 </svg>
@@ -887,32 +1056,80 @@
                                 </td>
 
                                 <td class="p-4 border-y border-gray-200 dark:border-gray-700 group-hover:border-blue-300 dark:group-hover:border-blue-700 transition-colors">
-                                    <button type="button" @click="openEditKeterangan(item)" class="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 text-left transition-colors hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800" :disabled="!canWrite" :class="!canWrite ? 'opacity-70 cursor-default' : ''">
-                                        <template x-if="item.keterangan.length === 0">
-                                            <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Tambah keterangan</span>
-                                        </template>
-                                        <template x-if="item.keterangan.length > 0">
-                                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                                <template x-for="(label, idx) in item.keterangan.slice(0, 10)" :key="label + idx">
-                                                    <div class="flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-3 py-3 shadow-sm min-w-0 dark:border-gray-700 dark:bg-gray-800">
-                                                        <div class="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 rounded-lg bg-blue-600 flex items-center justify-center">
-                                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-4 w-4 sm:h-5 sm:w-5 text-white">
-                                                                <path fill-rule="evenodd" d="M16.704 4.294a.75.75 0 01.002 1.06l-8.25 8.25a.75.75 0 01-1.06 0l-3.75-3.75a.75.75 0 011.06-1.06l3.22 3.22 7.72-7.72a.75.75 0 011.058 0z" clip-rule="evenodd" />
-                                                            </svg>
+                                    <div x-data="{ open: false }" class="relative">
+                                        <button
+                                            type="button"
+                                            class="w-full rounded-2xl border border-blue-100 bg-blue-50 px-4 py-2.5 text-left text-sm text-blue-700 flex items-center justify-between gap-3 hover:border-blue-300 hover:bg-blue-100 transition-colors dark:border-blue-900/40 dark:bg-blue-900/20 dark:text-blue-200"
+                                            @click="if (canWrite) open = !open"
+                                            :disabled="!canWrite"
+                                            :class="!canWrite ? 'opacity-70 cursor-default' : ''"
+                                        >
+                                            <div class="flex-1 min-w-0">
+            <span class="block text-[11px] font-semibold uppercase tracking-wide text-blue-500/80 mb-0.5">Keterangan</span>
+                                                <span class="block text-xs sm:text-sm font-medium truncate"
+                                                      x-text="item.keterangan.length ? item.keterangan.join(', ') : 'Pilih keterangan…'"></span>
+                                            </div>
+                                            <div class="flex items-center gap-2 flex-shrink-0">
+                                                <div class="h-7 w-7 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600 shadow-sm dark:bg-blue-900/40 dark:text-blue-200">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                                                        <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.24 4.5a.75.75 0 01-1.08 0l-4.24-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                                                    </svg>
+                                                </div>
+                                            </div>
+                                        </button>
+
+                                        <div
+                                            x-show="open"
+                                            x-transition:enter="transition ease-out duration-150"
+                                            x-transition:enter-start="opacity-0 translate-y-1"
+                                            x-transition:enter-end="opacity-100 translate-y-0"
+                                            x-transition:leave="transition ease-in duration-100"
+                                            x-transition:leave-start="opacity-100 translate-y-0"
+                                            x-transition:leave-end="opacity-0 translate-y-1"
+                                            @click.outside="open = false"
+                                            class="absolute z-30 mt-2 w-72 sm:w-80 right-0 rounded-xl border border-gray-200 bg-white shadow-xl ring-1 ring-black/5 dark:border-gray-700 dark:bg-gray-800"
+                                            style="display: none;"
+                                        >
+                                            <div class="max-h-64 overflow-y-auto py-2">
+                                                <template x-for="opt in options" :key="'opt-' + item.id + '-' + opt">
+                                                    <button
+                                                        type="button"
+                                                        class="w-full px-3 py-2 text-left text-xs sm:text-sm hover:bg-gray-50 dark:hover:bg-gray-700"
+                                                        @click="toggleKeteranganFromTable(item, opt)"
+                                                        :disabled="!canWrite"
+                                                    >
+                                                        <div
+                                                            class="flex items-center gap-3 rounded-lg border border-transparent px-1 py-0.5"
+                                                            :class="item.keterangan.includes(opt)
+                                                                ? 'bg-blue-50 border-blue-100 dark:bg-blue-900/20 dark:border-blue-900/40'
+                                                                : ''"
+                                                        >
+                                                            <div
+                                                                class="h-5 w-5 rounded-md flex items-center justify-center flex-shrink-0"
+                                                                :class="item.keterangan.includes(opt)
+                                                                    ? 'bg-blue-600 text-white'
+                                                                    : 'bg-white border border-gray-300 text-transparent dark:bg-gray-800 dark:border-gray-600'"
+                                                            >
+                                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-3.5 w-3.5">
+                                                                    <path fill-rule="evenodd" d="M16.704 4.294a.75.75 0 01.002 1.06l-8.25 8.25a.75.75 0 01-1.06 0l-3.75-3.75a.75.75 0 011.06-1.06l3.22 3.22 7.72-7.72a.75.75 0 011.058 0z" clip-rule="evenodd" />
+                                                                </svg>
+                                                            </div>
+                                                            <span class="truncate text-gray-800 dark:text-gray-100" x-text="opt"></span>
                                                         </div>
-                                                        <div class="min-w-0">
-                                                            <div class="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate" x-text="label"></div>
-                                                        </div>
-                                                    </div>
-                                                </template>
-                                                <template x-if="item.keterangan.length > 10">
-                                                    <div class="col-span-1 sm:col-span-2 flex justify-end">
-                                                        <span class="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 border border-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-900/40" x-text="'+' + (item.keterangan.length - 10)"></span>
-                                                    </div>
+                                                    </button>
                                                 </template>
                                             </div>
-                                        </template>
-                                    </button>
+                                            <div class="border-t border-gray-100 dark:border-gray-700 px-3 py-2 flex justify-end" x-show="canWrite && lpPerms.keterangan">
+                                                <button
+                                                    type="button"
+                                                    class="text-[11px] font-medium text-blue-600 hover:text-blue-700 hover:underline dark:text-blue-300 dark:hover:text-blue-200"
+                                                    @click="open = false; openEditKeterangan(item)"
+                                                >
+                                                    Edit keterangan
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </td>
 
                                 <td class="p-4 rounded-r-lg border-y border-r border-gray-200 dark:border-gray-700 group-hover:border-blue-300 dark:group-hover:border-blue-700 transition-colors">
@@ -1047,6 +1264,30 @@
                         <input x-model="newPengawas.nama" type="text" placeholder="Masukkan nama proyek" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder:text-gray-500">
                     </div>
                     <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-200">Pengawas</label>
+                        <div class="flex flex-wrap gap-2 mb-3">
+                            <template x-if="newPengawas.pengawas_users.length === 0">
+                                <span class="text-sm text-gray-500 dark:text-gray-400">Belum ada pengawas dipilih</span>
+                            </template>
+                            <template x-for="u in users" :key="`selected-user-${u.id}`">
+                                <template x-if="newPengawas.pengawas_users.includes(u.id)">
+                                    <span class="inline-flex items-center rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-semibold text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200" x-text="u.email"></span>
+                                </template>
+                            </template>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-48 overflow-y-auto pr-1">
+                            <template x-for="u in users" :key="`select-user-${u.id}`">
+                                <label class="flex items-center gap-3 p-3 border border-gray-200 rounded-lg shadow-sm cursor-pointer hover:bg-blue-50 hover:border-blue-200 transition-colors dark:border-gray-700 dark:hover:bg-blue-900/20 dark:hover:border-blue-800">
+                                    <input type="checkbox" :value="u.id" x-model="newPengawas.pengawas_users" class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                                    <div class="min-w-0">
+                                        <div class="text-sm font-medium text-gray-700 dark:text-gray-200 truncate" x-text="u.name"></div>
+                                        <div class="text-xs text-gray-500 dark:text-gray-400 truncate" x-text="u.email"></div>
+                                    </div>
+                                </label>
+                            </template>
+                        </div>
+                    </div>
+                    <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-200">Deadline</label>
                         <input x-model="newPengawas.deadline" type="date" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100">
                     </div>
@@ -1091,6 +1332,46 @@
                     <div class="flex justify-end space-x-3 mt-6">
                         <button @click="addModal = false" class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Batal</button>
                         <button @click="savePengawas()" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-md hover:shadow-lg transition-all">Simpan</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div x-show="managePengawasUserModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm transition-opacity" style="display: none;">
+            <div class="bg-white rounded-xl p-5 sm:p-6 w-[92vw] max-w-[520px] shadow-2xl transform transition-all dark:bg-gray-800 max-h-[85vh] overflow-y-auto">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-bold text-gray-800 dark:text-white">Kelola Pengawas</h2>
+                    <button @click="closeManagePengawasUser()" class="text-gray-400 hover:text-gray-600 transition-colors dark:hover:text-gray-200">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="space-y-4">
+                    <div class="rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900">
+                        <div class="text-[11px] font-semibold tracking-wider text-gray-500 uppercase dark:text-gray-400">Proyek</div>
+                        <div class="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100" x-text="selectedPengawasUserItem?.nama || '-'"></div>
+                    </div>
+                    <div class="rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900">
+                        <div class="text-[11px] font-semibold tracking-wider text-gray-500 uppercase dark:text-gray-400">Pengawas Saat Ini</div>
+                        <div class="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100" x-text="selectedPengawasUserAccount?.name || '-'"></div>
+                        <div class="mt-1 text-xs text-gray-500 dark:text-gray-400" x-text="selectedPengawasUserAccount?.email || '-'"></div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-200">Ganti Pengawas</label>
+                        <select x-model="replacePengawasUserId" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100">
+                            <option value="">Pilih pengawas baru</option>
+                            <template x-for="u in users" :key="`replace-user-${u.id}`">
+                                <option :value="u.id" x-text="`${u.name} - ${u.email}`"></option>
+                            </template>
+                        </select>
+                    </div>
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <button @click="removePengawasUser()" class="px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium transition-colors">Hapus Pengawas</button>
+                        <div class="flex items-center gap-3">
+                            <button @click="closeManagePengawasUser()" class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Batal</button>
+                            <button @click="replacePengawasUser()" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-md hover:shadow-lg transition-all">Simpan</button>
+                        </div>
                     </div>
                 </div>
             </div>

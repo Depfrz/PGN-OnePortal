@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Module;
 use App\Models\ModuleAccess;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -45,6 +46,92 @@ class ListPengawasanController extends Controller
             ->exists();
     }
 
+    private function canAccessPengawas($user, int $pengawasId): bool
+    {
+        if ($user->hasRole(['Admin', 'Supervisor'])) {
+            return true;
+        }
+
+        return DB::table('pengawas_users')
+            ->where('pengawas_id', $pengawasId)
+            ->where('user_id', $user->id)
+            ->exists();
+    }
+
+    private function getAssignedUsersMap(array $pengawasIds): array
+    {
+        if (empty($pengawasIds)) {
+            return [];
+        }
+
+        $rows = DB::table('pengawas_users')
+            ->join('users', 'users.id', '=', 'pengawas_users.user_id')
+            ->whereIn('pengawas_users.pengawas_id', $pengawasIds)
+            ->orderBy('users.name')
+            ->get([
+                'pengawas_users.pengawas_id',
+                'users.id',
+                'users.name',
+                'users.email',
+            ]);
+
+        return $rows->groupBy('pengawas_id')
+            ->map(fn($group) => $group->map(fn($row) => [
+                'id' => $row->id,
+                'name' => $row->name,
+                'email' => $row->email,
+            ])->values()->toArray())
+            ->toArray();
+    }
+
+    private function getListPengawasanPermissions($user): array
+    {
+        if ($user->hasRole(['Admin', 'Supervisor'])) {
+            return [
+                'tambah_proyek' => true,
+                'nama_proyek' => true,
+                'deadline' => true,
+                'status' => true,
+                'keterangan' => true,
+                'edit_keterangan' => true,
+                'bukti' => true,
+            ];
+        }
+
+        $module = Module::where('slug', 'list-pengawasan')->first();
+        if (!$module) {
+            return [
+                'tambah_proyek' => false,
+                'nama_proyek' => false,
+                'deadline' => false,
+                'status' => false,
+                'keterangan' => false,
+                'edit_keterangan' => false,
+                'bukti' => false,
+            ];
+        }
+
+        $access = ModuleAccess::where('user_id', $user->id)
+            ->where('module_id', $module->id)
+            ->first();
+
+        $base = [
+            'tambah_proyek' => false,
+            'nama_proyek' => false,
+            'deadline' => false,
+            'status' => false,
+            'keterangan' => false,
+            'edit_keterangan' => false,
+            'bukti' => false,
+        ];
+
+        if (!$access || !is_array($access->extra_permissions['list_pengawasan'] ?? null)) {
+            return $base;
+        }
+
+        return array_merge($base, $access->extra_permissions['list_pengawasan']);
+    }
+
     public function index(Request $request)
     {
         /** @var \App\Models\User $user */
@@ -67,16 +154,35 @@ class ListPengawasanController extends Controller
         $search = $request->query('search', '');
 
         $pengawasQuery = DB::table('pengawas')
-            ->select('id', 'name', 'divisi', 'tanggal', 'deadline', 'status', 'created_at', 'bukti_path', 'bukti_original_name', 'bukti_mime', 'bukti_size', 'bukti_uploaded_at')
-            ->orderBy('created_at', 'desc');
+            ->select(
+                'pengawas.id as id',
+                'pengawas.name',
+                'pengawas.divisi',
+                'pengawas.tanggal',
+                'pengawas.deadline',
+                'pengawas.status',
+                'pengawas.created_at',
+                'pengawas.bukti_path',
+                'pengawas.bukti_original_name',
+                'pengawas.bukti_mime',
+                'pengawas.bukti_size',
+                'pengawas.bukti_uploaded_at'
+            )
+            ->orderBy('pengawas.created_at', 'desc');
+
+        if (!$user->hasRole(['Admin', 'Supervisor'])) {
+            $pengawasQuery->join('pengawas_users', 'pengawas_users.pengawas_id', '=', 'pengawas.id')
+                ->where('pengawas_users.user_id', $user->id);
+        }
 
         if ($search !== '') {
-            $pengawasQuery->where('name', 'like', '%' . $search . '%');
+            $pengawasQuery->where('pengawas.name', 'like', '%' . $search . '%');
         }
 
         $pengawas = $pengawasQuery->get();
+        $assignedUsersMap = $this->getAssignedUsersMap($pengawas->pluck('id')->all());
 
-        $items = $pengawas->map(function ($p) {
+        $items = $pengawas->map(function ($p) use ($assignedUsersMap) {
             $labels = DB::table('pengawas_keterangan')
                 ->join('keterangan_options', 'keterangan_options.id', '=', 'pengawas_keterangan.keterangan_option_id')
                 ->where('pengawas_keterangan.pengawas_id', $p->id)
@@ -96,6 +202,7 @@ class ListPengawasanController extends Controller
                 'deadline_display' => $deadline ? $deadline->format('d-m-Y') : '-',
                 'status' => $this->normalizeStatus($p->status),
                 'keterangan' => $labels,
+                'pengawas_users' => $assignedUsersMap[$p->id] ?? [],
                 'bukti' => [
                     'path' => $p->bukti_path,
                     'name' => $p->bukti_original_name,
@@ -108,10 +215,12 @@ class ListPengawasanController extends Controller
         })->toArray();
 
         $options = DB::table('keterangan_options')->orderBy('name')->pluck('name')->toArray();
+        $users = User::orderBy('name')->get(['id', 'name', 'email'])->toArray();
 
         $canWrite = $this->canWriteForModule($user);
+        $lpPermissions = $this->getListPengawasanPermissions($user);
 
-        return view('list-pengawasan.index', compact('items', 'options', 'canWrite'));
+        return view('list-pengawasan.index', compact('items', 'options', 'users', 'canWrite', 'lpPermissions'));
     }
 
     public function store(Request $request)
@@ -129,6 +238,8 @@ class ListPengawasanController extends Controller
             'keterangan.*' => ['string', 'max:255'],
             'deadline' => ['nullable', 'date'],
             'status' => ['nullable', 'string', Rule::in(self::ALLOWED_STATUS)],
+            'pengawas_users' => ['array'],
+            'pengawas_users.*' => ['integer', 'exists:users,id'],
         ]);
 
         $status = $data['status'] ?? 'On Progress';
@@ -142,6 +253,20 @@ class ListPengawasanController extends Controller
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+
+        $userIds = collect($data['pengawas_users'] ?? [])
+            ->filter()
+            ->unique()
+            ->values();
+        $userIds->push($user->id);
+        $userIds = $userIds->unique()->values();
+
+        foreach ($userIds as $userId) {
+            DB::table('pengawas_users')->updateOrInsert(
+                ['pengawas_id' => $pengawasId, 'user_id' => $userId],
+                ['created_at' => now(), 'updated_at' => now()]
+            );
+        }
 
         $labels = $data['keterangan'] ?? [];
         foreach ($labels as $label) {
@@ -161,6 +286,13 @@ class ListPengawasanController extends Controller
             );
         }
 
+        $assignedUsers = DB::table('users')
+            ->whereIn('id', $userIds->all())
+            ->orderBy('name')
+            ->get(['id', 'name', 'email'])
+            ->map(fn($u) => ['id' => $u->id, 'name' => $u->name, 'email' => $u->email])
+            ->toArray();
+
         return response()->json([
             'message' => 'Pengawas berhasil ditambahkan',
             'id' => $pengawasId,
@@ -168,6 +300,7 @@ class ListPengawasanController extends Controller
             'tanggal' => now()->format('d-m-Y H:i'),
             'deadline' => $data['deadline'] ?? null,
             'status' => $status,
+            'pengawas_users' => $assignedUsers,
         ]);
     }
 
@@ -176,6 +309,9 @@ class ListPengawasanController extends Controller
         /** @var \App\Models\User $user */
         $user = Auth::user();
         if (!$this->canWriteForModule($user)) {
+            return response()->json(['message' => 'Unauthorized action.'], 403);
+        }
+        if (!$this->canAccessPengawas($user, $id)) {
             return response()->json(['message' => 'Unauthorized action.'], 403);
         }
 
@@ -197,11 +333,97 @@ class ListPengawasanController extends Controller
         return response()->json(['message' => 'Pengawas berhasil diperbarui']);
     }
 
+    public function replacePengawasUser(Request $request, int $id)
+    {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+        if (!$this->canWriteForModule($user)) {
+            return response()->json(['message' => 'Unauthorized action.'], 403);
+        }
+        if (!$this->canAccessPengawas($user, $id)) {
+            return response()->json(['message' => 'Unauthorized action.'], 403);
+        }
+
+        $data = $request->validate([
+            'old_user_id' => ['required', 'integer', 'exists:users,id'],
+            'new_user_id' => ['required', 'integer', 'exists:users,id'],
+        ]);
+
+        if ($data['old_user_id'] === $data['new_user_id']) {
+            $assignedUsersMap = $this->getAssignedUsersMap([$id]);
+            return response()->json([
+                'message' => 'Tidak ada perubahan',
+                'pengawas_users' => $assignedUsersMap[$id] ?? [],
+            ]);
+        }
+
+        $exists = DB::table('pengawas_users')
+            ->where('pengawas_id', $id)
+            ->where('user_id', $data['old_user_id'])
+            ->exists();
+
+        if (!$exists) {
+            return response()->json(['message' => 'Pengawas tidak ditemukan'], 404);
+        }
+
+        DB::table('pengawas_users')
+            ->where('pengawas_id', $id)
+            ->where('user_id', $data['old_user_id'])
+            ->delete();
+
+        DB::table('pengawas_users')->updateOrInsert(
+            ['pengawas_id' => $id, 'user_id' => $data['new_user_id']],
+            ['created_at' => now(), 'updated_at' => now()]
+        );
+
+        $assignedUsersMap = $this->getAssignedUsersMap([$id]);
+
+        return response()->json([
+            'message' => 'Pengawas berhasil diperbarui',
+            'pengawas_users' => $assignedUsersMap[$id] ?? [],
+        ]);
+    }
+
+    public function removePengawasUser(Request $request, int $id)
+    {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+        if (!$this->canWriteForModule($user)) {
+            return response()->json(['message' => 'Unauthorized action.'], 403);
+        }
+        if (!$this->canAccessPengawas($user, $id)) {
+            return response()->json(['message' => 'Unauthorized action.'], 403);
+        }
+
+        $data = $request->validate([
+            'user_id' => ['required', 'integer', 'exists:users,id'],
+        ]);
+
+        $deleted = DB::table('pengawas_users')
+            ->where('pengawas_id', $id)
+            ->where('user_id', $data['user_id'])
+            ->delete();
+
+        if (!$deleted) {
+            return response()->json(['message' => 'Pengawas tidak ditemukan'], 404);
+        }
+
+        $assignedUsersMap = $this->getAssignedUsersMap([$id]);
+
+        return response()->json([
+            'message' => 'Pengawas berhasil dihapus',
+            'pengawas_users' => $assignedUsersMap[$id] ?? [],
+        ]);
+    }
+
     public function updateKeterangan(Request $request, int $id)
     {
         /** @var \App\Models\User $user */
         $user = Auth::user();
         if (!$this->canWriteForModule($user)) {
+            return response()->json(['message' => 'Unauthorized action.'], 403);
+        }
+        if (!$this->canAccessPengawas($user, $id)) {
             return response()->json(['message' => 'Unauthorized action.'], 403);
         }
 
@@ -210,7 +432,11 @@ class ListPengawasanController extends Controller
             'keterangan.*' => ['string', 'max:255'],
         ]);
 
-        $labels = $data['keterangan'] ?? [];
+        $labels = collect($data['keterangan'] ?? [])
+            ->map(fn($label) => trim((string) $label))
+            ->filter()
+            ->unique()
+            ->values();
 
         DB::table('pengawas_keterangan')->where('pengawas_id', $id)->delete();
 
@@ -231,7 +457,10 @@ class ListPengawasanController extends Controller
             );
         }
 
-        return response()->json(['message' => 'Keterangan berhasil diperbarui']);
+        return response()->json([
+            'message' => 'Keterangan berhasil diperbarui',
+            'keterangan' => $labels->values()->all(),
+        ]);
     }
 
     public function destroy(int $id)
@@ -239,6 +468,9 @@ class ListPengawasanController extends Controller
         /** @var \App\Models\User $user */
         $user = Auth::user();
         if (!$this->canWriteForModule($user)) {
+            return response()->json(['message' => 'Unauthorized action.'], 403);
+        }
+        if (!$this->canAccessPengawas($user, $id)) {
             return response()->json(['message' => 'Unauthorized action.'], 403);
         }
 
@@ -253,6 +485,9 @@ class ListPengawasanController extends Controller
         /** @var \App\Models\User $user */
         $user = Auth::user();
         if (!$this->canWriteForModule($user)) {
+            return response()->json(['message' => 'Unauthorized action.'], 403);
+        }
+        if (!$this->canAccessPengawas($user, $id)) {
             return response()->json(['message' => 'Unauthorized action.'], 403);
         }
 
@@ -277,6 +512,9 @@ class ListPengawasanController extends Controller
         /** @var \App\Models\User $user */
         $user = Auth::user();
         if (!$this->canWriteForModule($user)) {
+            return response()->json(['message' => 'Unauthorized action.'], 403);
+        }
+        if (!$this->canAccessPengawas($user, $id)) {
             return response()->json(['message' => 'Unauthorized action.'], 403);
         }
 
@@ -304,6 +542,9 @@ class ListPengawasanController extends Controller
         /** @var \App\Models\User $user */
         $user = Auth::user();
         if (!$this->canWriteForModule($user)) {
+            return response()->json(['message' => 'Unauthorized action.'], 403);
+        }
+        if (!$this->canAccessPengawas($user, $id)) {
             return response()->json(['message' => 'Unauthorized action.'], 403);
         }
 
@@ -350,6 +591,9 @@ class ListPengawasanController extends Controller
         /** @var \App\Models\User $user */
         $user = Auth::user();
         if (!$this->canWriteForModule($user)) {
+            return response()->json(['message' => 'Unauthorized action.'], 403);
+        }
+        if (!$this->canAccessPengawas($user, $id)) {
             return response()->json(['message' => 'Unauthorized action.'], 403);
         }
 

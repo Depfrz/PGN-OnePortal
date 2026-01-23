@@ -69,6 +69,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('/list-pengawasan/{id}/deadline', [ListPengawasanController::class, 'updateDeadline'])
         ->whereNumber('id')
         ->name('list-pengawasan.update-deadline');
+    Route::patch('/list-pengawasan/{id}/pengawas-users', [ListPengawasanController::class, 'replacePengawasUser'])
+        ->whereNumber('id')
+        ->name('list-pengawasan.replace-pengawas-user');
+    Route::delete('/list-pengawasan/{id}/pengawas-users', [ListPengawasanController::class, 'removePengawasUser'])
+        ->whereNumber('id')
+        ->name('list-pengawasan.remove-pengawas-user');
     Route::post('/list-pengawasan/{id}/bukti', [ListPengawasanController::class, 'uploadBukti'])
         ->whereNumber('id')
         ->name('list-pengawasan.upload-bukti');

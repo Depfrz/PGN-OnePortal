@@ -17,12 +17,16 @@ class ModuleAccess extends Model
         'can_read',
         'can_write',
         'can_delete',
+        'show_on_dashboard',
+        'extra_permissions',
     ];
 
     protected $casts = [
         'can_read' => 'boolean',
         'can_write' => 'boolean',
         'can_delete' => 'boolean',
+        'show_on_dashboard' => 'boolean',
+        'extra_permissions' => 'array',
     ];
 
     public function user()

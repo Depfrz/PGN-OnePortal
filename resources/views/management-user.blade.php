@@ -11,6 +11,15 @@
         selectedUser: null,
         selectedAccess: [],
         dashboardAccess: [],
+        listPengawasanPermissions: {
+            tambah_proyek: true,
+            nama_proyek: true,
+            deadline: true,
+            status: true,
+            keterangan: true,
+            edit_keterangan: true,
+            bukti: true,
+        },
         
         // Form Data
         newUser: {
@@ -60,6 +69,16 @@
             this.selectedUser = JSON.parse(JSON.stringify(user)); // Clone object
             this.selectedAccess = [...this.selectedUser.hak_akses];
             this.dashboardAccess = [...(this.selectedUser.dashboard_access || [])];
+            this.listPengawasanPermissions = {
+                tambah_proyek: true,
+                nama_proyek: true,
+                deadline: true,
+                status: true,
+                keterangan: true,
+                edit_keterangan: true,
+                bukti: true,
+                ...(this.selectedUser.list_pengawasan_permissions || {}),
+            };
             
             // Auto-enable dashboard access for specific modules if they are selected
             // This ensures backward compatibility for users who previously had access but dashboard unchecked
@@ -135,7 +154,8 @@
                     },
                     body: JSON.stringify({ 
                         hak_akses: this.selectedAccess,
-                        dashboard_access: this.dashboardAccess 
+                        dashboard_access: this.dashboardAccess,
+                        list_pengawasan_permissions: this.listPengawasanPermissions,
                     })
                 });
 
@@ -549,11 +569,66 @@
                                                        class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
                                                 <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ $module->name }}</span>
                                             </label>
-                                            
-                                            <!-- No Dashboard Checkbox for items (per request requirements) -->
                                         </div>
                                     @endforeach
                                 </div>
+
+                                @if($groupName === 'List Pengawasan')
+                                    <div class="mt-3 grid grid-cols-1 gap-2 border border-blue-100 dark:border-blue-900/40 rounded-xl bg-blue-50/40 dark:bg-blue-900/10 px-3 py-3">
+                                        <div class="text-[11px] font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-300 mb-1">
+                                            Hak Akses Detail
+                                        </div>
+                                        <label class="flex items-center gap-3 cursor-pointer px-2 py-1 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30">
+                                            <input type="checkbox" x-model="listPengawasanPermissions.tambah_proyek" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                                            <div class="flex flex-col">
+                                                <span class="text-sm font-medium text-gray-800 dark:text-gray-200">Tambah Proyek</span>
+                                                <span class="text-xs text-gray-500 dark:text-gray-400">Boleh menambahkan proyek baru.</span>
+                                            </div>
+                                        </label>
+                                        <label class="flex items-center gap-3 cursor-pointer px-2 py-1 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30">
+                                            <input type="checkbox" x-model="listPengawasanPermissions.nama_proyek" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                                            <div class="flex flex-col">
+                                                <span class="text-sm font-medium text-gray-800 dark:text-gray-200">Nama Proyek</span>
+                                                <span class="text-xs text-gray-500 dark:text-gray-400">Boleh mengedit dan menghapus proyek.</span>
+                                            </div>
+                                        </label>
+                                        <label class="flex items-center gap-3 cursor-pointer px-2 py-1 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30">
+                                            <input type="checkbox" x-model="listPengawasanPermissions.deadline" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                                            <div class="flex flex-col">
+                                                <span class="text-sm font-medium text-gray-800 dark:text-gray-200">Deadline</span>
+                                                <span class="text-xs text-gray-500 dark:text-gray-400">Boleh mengubah tanggal deadline.</span>
+                                            </div>
+                                        </label>
+                                        <label class="flex items-center gap-3 cursor-pointer px-2 py-1 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30">
+                                            <input type="checkbox" x-model="listPengawasanPermissions.status" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                                            <div class="flex flex-col">
+                                                <span class="text-sm font-medium text-gray-800 dark:text-gray-200">Status</span>
+                                                <span class="text-xs text-gray-500 dark:text-gray-400">Boleh mengganti status progress proyek.</span>
+                                            </div>
+                                        </label>
+                                        <label class="flex items-center gap-3 cursor-pointer px-2 py-1 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30">
+                                            <input type="checkbox" x-model="listPengawasanPermissions.keterangan" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                                            <div class="flex flex-col">
+                                                <span class="text-sm font-medium text-gray-800 dark:text-gray-200">Keterangan</span>
+                                                <span class="text-xs text-gray-500 dark:text-gray-400">Boleh ceklis/uncentang keterangan yang sudah ada.</span>
+                                            </div>
+                                        </label>
+                                        <label class="flex items-center gap-3 cursor-pointer px-2 py-1 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30">
+                                            <input type="checkbox" x-model="listPengawasanPermissions.edit_keterangan" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                                            <div class="flex flex-col">
+                                                <span class="text-sm font-medium text-gray-800 dark:text-gray-200">Edit Keterangan</span>
+                                                <span class="text-xs text-gray-500 dark:text-gray-400">Boleh menambah, rename, dan hapus kategori keterangan.</span>
+                                            </div>
+                                        </label>
+                                        <label class="flex items-center gap-3 cursor-pointer px-2 py-1 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30">
+                                            <input type="checkbox" x-model="listPengawasanPermissions.bukti" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                                            <div class="flex flex-col">
+                                                <span class="text-sm font-medium text-gray-800 dark:text-gray-200">Bukti</span>
+                                                <span class="text-xs text-gray-500 dark:text-gray-400">Boleh upload, ganti, dan hapus file bukti.</span>
+                                            </div>
+                                        </label>
+                                    </div>
+                                @endif
                             </div>
                         @endforeach
                     </div>
