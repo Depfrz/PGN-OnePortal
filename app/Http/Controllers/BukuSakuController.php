@@ -256,7 +256,7 @@ class BukuSakuController extends Controller
         
         $document->delete();
 
-        return redirect()->back()->with('success', 'Dokumen berhasil dihapus.');
+        return redirect()->back()->with('success', 'Dokumen "' . $document->title . '" berhasil dihapus.');
     }
 
     public function approvalIndex()
