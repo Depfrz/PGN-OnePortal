@@ -58,18 +58,25 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/list-pengawasan', [ListPengawasanController::class, 'store'])
         ->name('list-pengawasan.store');
     Route::patch('/list-pengawasan/{id}/keterangan', [ListPengawasanController::class, 'updateKeterangan'])
+        ->whereNumber('id')
         ->name('list-pengawasan.update-keterangan');
     Route::patch('/list-pengawasan/{id}', [ListPengawasanController::class, 'updatePengawas'])
+        ->whereNumber('id')
         ->name('list-pengawasan.update');
     Route::patch('/list-pengawasan/{id}/status', [ListPengawasanController::class, 'updateStatus'])
+        ->whereNumber('id')
         ->name('list-pengawasan.update-status');
     Route::patch('/list-pengawasan/{id}/deadline', [ListPengawasanController::class, 'updateDeadline'])
+        ->whereNumber('id')
         ->name('list-pengawasan.update-deadline');
     Route::post('/list-pengawasan/{id}/bukti', [ListPengawasanController::class, 'uploadBukti'])
+        ->whereNumber('id')
         ->name('list-pengawasan.upload-bukti');
     Route::delete('/list-pengawasan/{id}/bukti', [ListPengawasanController::class, 'deleteBukti'])
+        ->whereNumber('id')
         ->name('list-pengawasan.delete-bukti');
     Route::delete('/list-pengawasan/{id}', [ListPengawasanController::class, 'destroy'])
+        ->whereNumber('id')
         ->name('list-pengawasan.destroy');
     Route::patch('/list-pengawasan/keterangan/rename', [ListPengawasanController::class, 'renameOption'])
         ->name('list-pengawasan.keterangan.rename');

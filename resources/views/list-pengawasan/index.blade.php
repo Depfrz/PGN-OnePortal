@@ -7,13 +7,16 @@
         addModal: false,
         editKeteranganModal: false,
         deleteModal: false,
-        clearKeteranganModal: false,
         deleteBuktiModal: false,
+        deleteOptionModal: false,
+        renameOptionModal: false,
+        saveKeteranganConfirmModal: false,
         selectedPengawas: null,
         selectedKeterangan: [],
         newLabel: '',
-        manageOptionSelected: '',
-        manageOptionNewName: '',
+        deleteOptionName: '',
+        renameOptionOldName: '',
+        renameOptionNewName: '',
         toast: { show: false, message: '', timeoutId: null },
         editingId: null,
         editPengawas: { nama: '' },
@@ -180,8 +183,6 @@
             this.selectedPengawas = JSON.parse(JSON.stringify(item));
             this.selectedKeterangan = [...item.keterangan];
             this.newLabel = '';
-            this.manageOptionSelected = '';
-            this.manageOptionNewName = '';
             this.editKeteranganModal = true;
         },
         replaceKeteranganLabel(oldName, newName) {
@@ -202,68 +203,135 @@
                 keterangan: (it.keterangan || []).filter(o => o !== name)
             }));
         },
-        async renameKeteranganOption() {
+        openRenameOption(name) {
             if (!this.canWrite) return;
-            const oldName = this.manageOptionSelected;
-            const newName = this.manageOptionNewName?.trim() || '';
+            if (!name) return;
+            this.renameOptionOldName = name;
+            this.renameOptionNewName = name;
+            this.renameOptionModal = true;
+        },
+        async confirmRenameOption() {
+            if (!this.canWrite) return;
+            const oldName = this.renameOptionOldName;
+            const newName = this.renameOptionNewName?.trim() || '';
             if (!oldName) return;
             if (!newName) return;
+            if (newName === oldName) {
+                this.renameOptionModal = false;
+                this.renameOptionOldName = '';
+                this.renameOptionNewName = '';
+                return;
+            }
             try {
                 const response = await fetch('/list-pengawasan/keterangan/rename', {
                     method: 'PATCH',
+                    credentials: 'same-origin',
                     headers: {
                         'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
                         'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
                     },
                     body: JSON.stringify({ old_name: oldName, new_name: newName })
                 });
                 if (response.ok) {
                     this.replaceKeteranganLabel(oldName, newName);
-                    this.manageOptionSelected = newName;
-                    this.manageOptionNewName = '';
+                    this.renameOptionModal = false;
+                    this.renameOptionOldName = '';
+                    this.renameOptionNewName = '';
                     this.showToast('Nama keterangan berhasil diubah');
                 } else {
-                    const d = await response.json().catch(() => ({}));
-                    alert(d.message || 'Gagal mengubah nama keterangan');
+                    if (response.status === 403) {
+                        this.renameOptionModal = false;
+                        this.showToast('Anda tidak punya akses untuk mengubah opsi');
+                        return;
+                    }
+                    if (response.status === 419) {
+                        this.renameOptionModal = false;
+                        this.showToast('Sesi habis. Silakan refresh halaman lalu coba lagi');
+                        return;
+                    }
+
+                    const contentType = response.headers.get('content-type') || '';
+                    let message = 'Gagal mengubah nama keterangan';
+                    if (contentType.includes('application/json')) {
+                        const d = await response.json().catch(() => ({}));
+                        message = d.message || message;
+                    } else {
+                        const t = await response.text().catch(() => '');
+                        if (t) message = 'Gagal mengubah nama keterangan';
+                    }
+                    this.renameOptionModal = false;
+                    this.showToast(message);
                 }
             } catch (e) {
                 console.error(e);
-                alert('Terjadi kesalahan sistem');
+                this.renameOptionModal = false;
+                this.showToast('Terjadi kesalahan sistem');
             }
         },
-        async deleteKeteranganOption() {
+        openDeleteOption(name) {
             if (!this.canWrite) return;
-            const name = this.manageOptionSelected;
             if (!name) return;
-            if (!confirm(`Hapus opsi keterangan “${name}”?`)) return;
+            this.deleteOptionName = name;
+            this.deleteOptionModal = true;
+        },
+        async confirmDeleteOption() {
+            if (!this.canWrite) return;
+            const name = this.deleteOptionName;
+            if (!name) return;
             try {
                 const response = await fetch('/list-pengawasan/keterangan', {
                     method: 'DELETE',
+                    credentials: 'same-origin',
                     headers: {
                         'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
                         'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
                     },
                     body: JSON.stringify({ name })
                 });
                 if (response.ok) {
                     this.removeKeteranganLabel(name);
-                    this.manageOptionSelected = '';
-                    this.manageOptionNewName = '';
+                    this.deleteOptionName = '';
+                    this.deleteOptionModal = false;
                     this.showToast('Opsi keterangan berhasil dihapus');
                 } else {
-                    const d = await response.json().catch(() => ({}));
                     if (response.status === 404) {
                         this.removeKeteranganLabel(name);
-                        this.manageOptionSelected = '';
-                        this.manageOptionNewName = '';
+                        this.deleteOptionName = '';
+                        this.deleteOptionModal = false;
                         this.showToast('Opsi keterangan dihapus dari daftar');
-                    } else {
-                        alert(d.message || 'Gagal menghapus opsi keterangan');
+                        return;
                     }
+                    if (response.status === 403) {
+                        this.deleteOptionModal = false;
+                        this.showToast('Anda tidak punya akses untuk menghapus opsi');
+                        return;
+                    }
+                    if (response.status === 419) {
+                        this.deleteOptionModal = false;
+                        this.showToast('Sesi habis. Silakan refresh halaman lalu coba lagi');
+                        return;
+                    }
+
+                    const contentType = response.headers.get('content-type') || '';
+                    let message = 'Gagal menghapus opsi keterangan';
+                    if (contentType.includes('application/json')) {
+                        const d = await response.json().catch(() => ({}));
+                        message = d.message || message;
+                    } else {
+                        const t = await response.text().catch(() => '');
+                        if (t) message = 'Gagal menghapus opsi keterangan';
+                    }
+                    this.deleteOptionModal = false;
+                    this.showToast(message);
                 }
             } catch (e) {
                 console.error(e);
-                alert('Terjadi kesalahan sistem');
+                this.deleteOptionModal = false;
+                this.showToast('Terjadi kesalahan sistem');
             }
         },
         addNewKeteranganToEdit() {
@@ -291,22 +359,22 @@
                     this.editKeteranganModal = false;
                     this.showToast('Keterangan berhasil disimpan');
                 } else {
-                    alert('Gagal menyimpan keterangan');
+                    const d = await response.json().catch(() => ({}));
+                    this.showToast(d.message || 'Gagal menyimpan keterangan');
                 }
             } catch (e) {
                 console.error(e);
-                alert('Terjadi kesalahan sistem');
+                this.showToast('Terjadi kesalahan sistem');
             }
         },
-        openClearKeterangan() {
+        openSaveKeteranganConfirm() {
             if (!this.canWrite) return;
-            this.clearKeteranganModal = true;
+            this.saveKeteranganConfirmModal = true;
         },
-        async confirmClearKeterangan() {
+        async confirmSaveKeterangan() {
             if (!this.canWrite) return;
-            this.selectedKeterangan = [];
+            this.saveKeteranganConfirmModal = false;
             await this.saveKeterangan();
-            this.clearKeteranganModal = false;
         },
         openDelete(item) {
             if (!this.canWrite) return;
@@ -487,7 +555,7 @@
                 alert('Terjadi kesalahan sistem');
             }
         },
-    }" class="p-6">
+    }" class="p-4 sm:p-6">
         <template x-teleport="body">
             <div x-show="toast.show"
                  x-transition:enter="transition ease-out duration-200"
@@ -511,8 +579,8 @@
 
         <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
             <h2 class="text-xl font-bold text-gray-800 dark:text-white">List Proyek</h2>
-            <div class="flex flex-wrap items-center justify-end gap-3">
-                <div class="relative w-[340px]">
+            <div class="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center justify-end gap-3">
+                <div class="relative w-full sm:w-[340px]">
                     <input x-model="search" type="text" placeholder="Cari Proyek..." class="w-full bg-[#f7f8f9] border border-[#d6d9de] rounded-2xl pl-6 pr-12 py-3 text-base text-gray-800 placeholder:text-[#6f7a86] shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 dark:placeholder:text-gray-400">
                     <div class="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 text-[#6f7a86] dark:text-gray-400">
@@ -520,19 +588,19 @@
                         </svg>
                     </div>
                 </div>
-                <select x-model="statusFilter" class="bg-[#f7f8f9] border border-[#d6d9de] rounded-xl px-4 py-3 text-sm text-gray-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100">
+                <select x-model="statusFilter" class="w-full sm:w-auto bg-[#f7f8f9] border border-[#d6d9de] rounded-xl px-4 py-3 text-sm text-gray-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100">
                     <option value="all">Semua Status</option>
                     <option value="pending">Pending</option>
                     <option value="on_progress">On Progress</option>
                     <option value="done">Done</option>
                 </select>
-                <select x-model="sortBy" class="bg-[#f7f8f9] border border-[#d6d9de] rounded-xl px-4 py-3 text-sm text-gray-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100">
+                <select x-model="sortBy" class="w-full sm:w-auto bg-[#f7f8f9] border border-[#d6d9de] rounded-xl px-4 py-3 text-sm text-gray-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100">
                     <option value="created_desc">Terbaru</option>
                     <option value="created_asc">Terlama</option>
                     <option value="deadline_asc">Deadline Terdekat</option>
                     <option value="deadline_desc">Deadline Terjauh</option>
                 </select>
-                <button x-show="canWrite" @click="openAdd()" class="bg-blue-600 text-white font-medium text-sm py-2.5 px-6 rounded-lg hover:bg-blue-700 transition-all shadow-md hover:shadow-lg flex items-center">
+                <button x-show="canWrite" @click="openAdd()" class="w-full sm:w-auto bg-blue-600 text-white font-medium text-sm py-2.5 px-6 rounded-lg hover:bg-blue-700 transition-all shadow-md hover:shadow-lg inline-flex items-center justify-center">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
                     </svg>
@@ -541,7 +609,7 @@
             </div>
         </div>
 
-        <div class="bg-gray-50 dark:bg-gray-900 rounded-xl p-6 overflow-x-auto border border-gray-100 dark:border-gray-700">
+        <div class="bg-gray-50 dark:bg-gray-900 rounded-xl p-4 sm:p-6 sm:overflow-x-auto border border-gray-100 dark:border-gray-700">
             <template x-if="items.length === 0">
                 <div class="py-14">
                     <div class="mx-auto max-w-md text-center">
@@ -557,20 +625,178 @@
             </template>
 
             <template x-if="items.length > 0">
-                <table class="w-full min-w-[1250px] border-separate border-spacing-y-3">
-                    <thead>
-                        <tr class="text-left">
-                            <th class="pb-2 font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider pl-4">Nama Proyek</th>
-                            <th class="pb-2 font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[150px] pr-4">Tanggal & Waktu</th>
-                            <th class="pb-2 font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[180px] pr-4">Deadline</th>
-                            <th class="pb-2 font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[140px] pr-4">Status</th>
-                            <th class="pb-2 font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[320px] pr-4">Keterangan</th>
-                            <th class="pb-2 font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider pr-4">Bukti</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <template x-for="item in filteredItems" :key="item.id">
-                            <tr class="bg-white dark:bg-gray-800 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 group">
+                <div>
+                    <div class="space-y-3 sm:hidden">
+                        <template x-for="item in filteredItems" :key="'mobile-' + item.id">
+                            <div class="rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                                <div class="p-4">
+                                <div class="flex items-start justify-between gap-3">
+                                    <div class="min-w-0 flex-1">
+                                        <template x-if="editingId === item.id">
+                                            <input x-model="editPengawas.nama" type="text" class="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-sm font-semibold text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100" />
+                                        </template>
+                                        <template x-if="editingId !== item.id">
+                                            <div class="text-gray-900 font-semibold text-base dark:text-white truncate" x-text="item.nama"></div>
+                                        </template>
+                                        <div class="mt-1 text-xs text-gray-500 dark:text-gray-400" x-text="item.tanggal"></div>
+                                    </div>
+
+                                    <div class="flex items-center gap-1 flex-shrink-0" x-show="canWrite">
+                                        <template x-if="editingId !== item.id">
+                                            <div class="flex items-center gap-1">
+                                                <button @click="startEdit(item)" class="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors dark:text-gray-400 dark:hover:text-blue-300 dark:hover:bg-blue-900/20" title="Edit Nama Proyek">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
+                                                        <path d="M21.731 2.269a2.625 2.625 0 00-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 000-3.712zM19.513 8.199l-3.712-3.712-12.15 12.15a5.25 5.25 0 00-1.32 2.214l-.8 2.685a.75.75 0 00.933.933l2.685-.8a5.25 5.25 0 002.214-1.32L19.513 8.2z" />
+                                                    </svg>
+                                                </button>
+                                                <button @click="openDelete(item)" class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors dark:hover:bg-red-900/20" title="Hapus Proyek">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </template>
+                                        <template x-if="editingId === item.id">
+                                            <div class="flex items-center gap-1">
+                                                <button @click="saveEdit(item)" class="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors dark:hover:bg-green-900/20" title="Simpan">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
+                                                        <path fill-rule="evenodd" d="M16.704 4.294a.75.75 0 01.002 1.06l-8.25 8.25a.75.75 0 01-1.06 0l-3.75-3.75a.75.75 0 011.06-1.06l3.22 3.22 7.72-7.72a.75.75 0 011.058 0z" clip-rule="evenodd" />
+                                                    </svg>
+                                                </button>
+                                                <button @click="cancelEdit()" class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors dark:hover:bg-red-900/20" title="Batal">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+
+                                <div class="mt-4 grid grid-cols-2 gap-3">
+                                    <div class="rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900">
+                                        <div class="text-[11px] font-semibold tracking-wider text-gray-500 uppercase dark:text-gray-400">Deadline</div>
+                                        <div class="mt-2">
+                                            <template x-if="editingDeadlineId === item.id">
+                                                <div class="flex items-center gap-2">
+                                                    <input type="date" x-model="editDeadline" class="w-full bg-white border border-gray-200 rounded-lg px-2 py-2 text-xs font-semibold text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100" />
+                                                    <button @click="saveDeadline(item)" class="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors dark:hover:bg-green-900/20" title="Simpan Deadline">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
+                                                            <path fill-rule="evenodd" d="M16.704 4.294a.75.75 0 01.002 1.06l-8.25 8.25a.75.75 0 01-1.06 0l-3.75-3.75a.75.75 0 011.06-1.06l3.22 3.22 7.72-7.72a.75.75 0 011.058 0z" clip-rule="evenodd" />
+                                                        </svg>
+                                                    </button>
+                                                    <button @click="cancelEditDeadline()" class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors dark:hover:bg-red-900/20" title="Batal">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                            </template>
+                                            <template x-if="editingDeadlineId !== item.id">
+                                                <div class="flex items-center justify-between gap-2">
+                                                    <span class="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate" x-text="item.deadline_display || '-'"></span>
+                                                    <button x-show="canWrite" type="button" @click="startEditDeadline(item)" class="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors dark:text-gray-400 dark:hover:text-blue-300 dark:hover:bg-blue-900/20" title="Edit Deadline">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
+                                                            <path d="M21.731 2.269a2.625 2.625 0 00-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 000-3.712zM19.513 8.199l-3.712-3.712-12.15 12.15a5.25 5.25 0 00-1.32 2.214l-.8 2.685a.75.75 0 00.933.933l2.685-.8a5.25 5.25 0 002.214-1.32L19.513 8.2z" />
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </div>
+
+                                    <div class="rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900">
+                                        <div class="text-[11px] font-semibold tracking-wider text-gray-500 uppercase dark:text-gray-400">Status</div>
+                                        <div class="mt-2">
+                                            <button
+                                                type="button"
+                                                class="inline-flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-xs font-bold shadow-sm transition-colors whitespace-nowrap"
+                                                :class="[statusMeta(item.status).cls, !canWrite ? 'opacity-70 cursor-default' : '']"
+                                                @click="openStatusMenu($event, item)"
+                                                :disabled="!canWrite"
+                                            >
+                                                <span class="truncate" x-text="statusMeta(item.status).label"></span>
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 opacity-90 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.24 4.5a.75.75 0 01-1.08 0l-4.24-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mt-4">
+                                    <div class="text-[11px] font-semibold tracking-wider text-gray-500 uppercase dark:text-gray-400">Keterangan</div>
+                                    <button type="button" @click="openEditKeterangan(item)" class="mt-2 w-full rounded-xl border border-gray-200 bg-gray-50 p-3 text-left transition-colors hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800" :disabled="!canWrite" :class="!canWrite ? 'opacity-70 cursor-default' : ''">
+                                        <template x-if="item.keterangan.length === 0">
+                                            <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Tambah keterangan</span>
+                                        </template>
+                                        <template x-if="item.keterangan.length > 0">
+                                            <div class="flex flex-wrap gap-2">
+                                                <template x-for="(label, idx) in item.keterangan.slice(0, 3)" :key="label + idx">
+                                                    <span class="inline-flex items-center rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-semibold text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200" x-text="label"></span>
+                                                </template>
+                                                <template x-if="item.keterangan.length > 3">
+                                                    <span class="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 border border-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-900/40" x-text="'+' + (item.keterangan.length - 3)"></span>
+                                                </template>
+                                            </div>
+                                        </template>
+                                    </button>
+                                </div>
+
+                                <div class="mt-4">
+                                    <div class="text-[11px] font-semibold tracking-wider text-gray-500 uppercase dark:text-gray-400">Bukti</div>
+                                    <div class="mt-2">
+                                        <div x-show="canWrite" class="flex items-center justify-between gap-3">
+                                            <input type="file" class="hidden" :id="`bukti-input-mobile-${item.id}`" accept="image/png,image/jpeg,application/pdf" @change="onBuktiChange(item, $event)">
+
+                                            <template x-if="!item.bukti || !item.bukti.url">
+                                                <button type="button" @click="(() => { const el = document.getElementById(`bukti-input-mobile-${item.id}`); if (el) el.click(); })()" class="inline-flex items-center justify-center rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 transition-colors dark:bg-gray-900 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800">
+                                                    Upload
+                                                </button>
+                                            </template>
+
+                                            <template x-if="item.bukti && item.bukti.url">
+                                                <div class="min-w-0 flex-1">
+                                                    <a :href="item.bukti.url" target="_blank" class="min-w-0 flex items-center gap-2">
+                                                        <template x-if="isImage(item.bukti.mime)">
+                                                            <img :src="item.bukti.url" alt="Bukti" class="w-10 h-10 rounded-lg object-cover border border-gray-200 dark:border-gray-700 flex-shrink-0">
+                                                        </template>
+                                                        <template x-if="!isImage(item.bukti.mime)">
+                                                            <div class="w-10 h-10 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center text-red-600 dark:bg-red-900/20 dark:border-red-900/30 dark:text-red-300 flex-shrink-0">
+                                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
+                                                                    <path fill-rule="evenodd" d="M6 2.25A2.25 2.25 0 0 0 3.75 4.5v15A2.25 2.25 0 0 0 6 21.75h12A2.25 2.25 0 0 0 20.25 19.5V8.56a2.25 2.25 0 0 0-.659-1.591l-3.56-3.56A2.25 2.25 0 0 0 14.44 2.25H6Zm7.5 1.5V7.5a.75.75 0 0 0 .75.75h3.75l-4.5-4.5Z" clip-rule="evenodd" />
+                                                                </svg>
+                                                            </div>
+                                                        </template>
+                                                        <div class="min-w-0">
+                                                            <div class="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate" x-text="item.bukti.name"></div>
+                                                            <div class="text-xs text-gray-500 dark:text-gray-400" x-text="item.bukti.size ? formatSize(item.bukti.size) : ''"></div>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+
+                    <div class="hidden sm:block">
+                        <table class="w-full min-w-[1250px] border-separate border-spacing-y-3">
+                            <thead>
+                                <tr class="text-left">
+                                    <th class="pb-2 font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider pl-4">Nama Proyek</th>
+                                    <th class="pb-2 font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[150px] pr-4">Tanggal & Waktu</th>
+                                    <th class="pb-2 font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[180px] pr-4">Deadline</th>
+                                    <th class="pb-2 font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[140px] pr-4">Status</th>
+                                    <th class="pb-2 font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[320px] pr-4">Keterangan</th>
+                                    <th class="pb-2 font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider pr-4">Bukti</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template x-for="item in filteredItems" :key="item.id">
+                                    <tr class="bg-white dark:bg-gray-800 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 group">
                                 <td class="p-4 rounded-l-lg border-y border-l border-gray-200 dark:border-gray-700 group-hover:border-blue-300 dark:group-hover:border-blue-700 transition-colors">
                                     <div class="flex items-start justify-between gap-3">
                                         <div class="min-w-0 flex-1">
@@ -666,11 +892,11 @@
                                             <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Tambah keterangan</span>
                                         </template>
                                         <template x-if="item.keterangan.length > 0">
-                                            <div class="grid grid-cols-2 gap-3">
+                                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                                 <template x-for="(label, idx) in item.keterangan.slice(0, 10)" :key="label + idx">
                                                     <div class="flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-3 py-3 shadow-sm min-w-0 dark:border-gray-700 dark:bg-gray-800">
-                                                        <div class="h-9 w-9 flex-shrink-0 rounded-lg bg-blue-600 flex items-center justify-center">
-                                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-5 w-5 text-white">
+                                                        <div class="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 rounded-lg bg-blue-600 flex items-center justify-center">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-4 w-4 sm:h-5 sm:w-5 text-white">
                                                                 <path fill-rule="evenodd" d="M16.704 4.294a.75.75 0 01.002 1.06l-8.25 8.25a.75.75 0 01-1.06 0l-3.75-3.75a.75.75 0 011.06-1.06l3.22 3.22 7.72-7.72a.75.75 0 011.058 0z" clip-rule="evenodd" />
                                                             </svg>
                                                         </div>
@@ -680,7 +906,7 @@
                                                     </div>
                                                 </template>
                                                 <template x-if="item.keterangan.length > 10">
-                                                    <div class="col-span-2 flex justify-end">
+                                                    <div class="col-span-1 sm:col-span-2 flex justify-end">
                                                         <span class="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 border border-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-900/40" x-text="'+' + (item.keterangan.length - 10)"></span>
                                                     </div>
                                                 </template>
@@ -760,10 +986,12 @@
                                         </template>
                                     </div>
                                 </td>
-                            </tr>
-                        </template>
-                    </tbody>
-                </table>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </template>
         </div>
 
@@ -804,7 +1032,7 @@
         </template>
 
         <div x-show="addModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm transition-opacity" style="display: none;">
-            <div class="bg-white rounded-xl p-6 w-[560px] shadow-2xl transform transition-all dark:bg-gray-800">
+            <div class="bg-white rounded-xl p-5 sm:p-6 w-[92vw] max-w-[560px] shadow-2xl transform transition-all dark:bg-gray-800 max-h-[85vh] overflow-y-auto">
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-xl font-bold text-gray-800 dark:text-white">Tambah Proyek</h2>
                     <button @click="addModal = false" class="text-gray-400 hover:text-gray-600 transition-colors dark:hover:text-gray-200">
@@ -824,22 +1052,22 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-200">Status</label>
-                        <div class="inline-flex items-center rounded-lg border border-gray-200 bg-white p-1 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+                        <div class="grid grid-cols-3 sm:inline-flex items-center rounded-lg border border-gray-200 bg-white p-1 shadow-sm dark:border-gray-700 dark:bg-gray-900">
                             <button
                                 type="button"
-                                class="px-4 py-2 text-sm font-semibold rounded-md transition-colors"
+                                class="px-4 py-2 text-sm font-semibold rounded-md transition-colors w-full"
                                 :class="newPengawas.status === 'OFF' ? 'bg-red-600 text-white' : 'text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800'"
                                 @click="newPengawas.status = 'OFF'"
                             >Pending</button>
                             <button
                                 type="button"
-                                class="px-4 py-2 text-sm font-semibold rounded-md transition-colors"
+                                class="px-4 py-2 text-sm font-semibold rounded-md transition-colors w-full"
                                 :class="newPengawas.status === 'On Progress' ? 'bg-amber-600 text-white' : 'text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800'"
                                 @click="newPengawas.status = 'On Progress'"
                             >On Progress</button>
                             <button
                                 type="button"
-                                class="px-4 py-2 text-sm font-semibold rounded-md transition-colors"
+                                class="px-4 py-2 text-sm font-semibold rounded-md transition-colors w-full"
                                 :class="newPengawas.status === 'Done' ? 'bg-green-600 text-white' : 'text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800'"
                                 @click="newPengawas.status = 'Done'"
                             >Done</button>
@@ -847,7 +1075,7 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-200">Keterangan</label>
-                        <div class="grid grid-cols-2 gap-3">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <template x-for="opt in options" :key="opt">
                                 <label class="flex items-center p-3 border border-gray-200 rounded-lg shadow-sm cursor-pointer hover:bg-blue-50 hover:border-blue-200 transition-colors gap-3 dark:border-gray-700 dark:hover:bg-blue-900/20 dark:hover:border-blue-800">
                                     <input type="checkbox" :value="opt" x-model="newPengawas.keterangan" class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
@@ -870,7 +1098,7 @@
 
         <!-- Edit Keterangan Modal -->
         <div x-show="editKeteranganModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm transition-opacity" style="display: none;">
-            <div class="bg-white rounded-xl p-6 w-[560px] shadow-2xl transform transition-all dark:bg-gray-800">
+            <div class="bg-white rounded-xl p-5 sm:p-6 w-[92vw] max-w-[560px] shadow-2xl transform transition-all dark:bg-gray-800 max-h-[85vh] overflow-y-auto">
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-xl font-bold text-gray-800 dark:text-white">Edit Keterangan</h2>
                     <button @click="editKeteranganModal = false" class="text-gray-400 hover:text-gray-600 transition-colors dark:hover:text-gray-200">
@@ -880,48 +1108,116 @@
                     </button>
                 </div>
                 <div class="space-y-4">
-                    <div class="grid grid-cols-2 gap-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <template x-for="opt in options" :key="opt">
-                            <label class="flex items-center p-3 border border-gray-200 rounded-lg shadow-sm cursor-pointer hover:bg-blue-50 hover:border-blue-200 transition-colors gap-3 dark:border-gray-700 dark:hover:bg-blue-900/20 dark:hover:border-blue-800">
-                                <input type="checkbox" :value="opt" x-model="selectedKeterangan" class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                                <span class="text-sm font-medium text-gray-700 dark:text-gray-200" x-text="opt"></span>
-                            </label>
+                            <div class="flex items-center justify-between gap-2 p-3 border border-gray-200 rounded-lg shadow-sm hover:bg-blue-50 hover:border-blue-200 transition-colors dark:border-gray-700 dark:hover:bg-blue-900/20 dark:hover:border-blue-800">
+                                <label class="flex items-center gap-3 min-w-0 flex-1 cursor-pointer">
+                                    <input type="checkbox" :value="opt" x-model="selectedKeterangan" class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                                    <span class="text-sm font-medium text-gray-700 dark:text-gray-200 truncate" x-text="opt"></span>
+                                </label>
+                                <div class="flex items-center gap-1 flex-shrink-0">
+                                    <button type="button" @click.stop="openRenameOption(opt)" class="h-8 w-8 sm:h-9 sm:w-9 inline-flex items-center justify-center rounded-lg bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-700" :disabled="!canWrite" :class="!canWrite ? 'opacity-60 cursor-not-allowed' : ''">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-4 w-4 sm:h-5 sm:w-5">
+                                            <path d="M13.586 3.586a2 2 0 112.828 2.828l-8.25 8.25a1 1 0 01-.414.263l-3 1a1 1 0 01-1.263-1.263l1-3a1 1 0 01.263-.414l8.25-8.25z" />
+                                            <path d="M12.293 5.293l2.414 2.414" />
+                                        </svg>
+                                    </button>
+                                    <button type="button" @click.stop="openDeleteOption(opt)" class="h-8 w-8 sm:h-9 sm:w-9 inline-flex items-center justify-center rounded-lg bg-white border border-gray-200 text-red-700 hover:bg-red-50 transition-colors dark:bg-gray-800 dark:border-gray-700 dark:text-red-300 dark:hover:bg-red-900/20" :disabled="!canWrite" :class="!canWrite ? 'opacity-60 cursor-not-allowed' : ''">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-4 w-4 sm:h-5 sm:w-5">
+                                            <path fill-rule="evenodd" d="M6 8a1 1 0 011 1v7a1 1 0 11-2 0V9a1 1 0 011-1zm4 1a1 1 0 10-2 0v7a1 1 0 102 0V9zm3-4a1 1 0 00-1-1H8a1 1 0 00-1 1v1H4a1 1 0 100 2h1v10a2 2 0 002 2h6a2 2 0 002-2V8h1a1 1 0 100-2h-3V5z" clip-rule="evenodd" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
                         </template>
                     </div>
                     <div class="flex items-center gap-2">
                         <input x-model="newLabel" type="text" placeholder="Tambah keterangan baru" class="flex-1 bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder:text-gray-500">
                         <button @click="addNewKeteranganToEdit()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">Tambah</button>
                     </div>
-                    <div class="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900">
-                        <div class="text-[11px] font-semibold tracking-wider text-gray-500 uppercase dark:text-gray-400">Kelola Opsi</div>
-                        <div class="mt-3 space-y-3">
-                            <select x-model="manageOptionSelected" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100">
-                                <option value="">Pilih opsi keterangan…</option>
-                                <template x-for="opt in options" :key="'manage-' + opt">
-                                    <option :value="opt" x-text="opt"></option>
-                                </template>
-                            </select>
-                            <div class="flex items-center gap-2">
-                                <input x-model="manageOptionNewName" type="text" placeholder="Nama baru (untuk rename)" class="flex-1 bg-white border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100 dark:placeholder:text-gray-500">
-                                <button @click="renameKeteranganOption()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap">Rename</button>
-                                <button @click="deleteKeteranganOption()" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors whitespace-nowrap">Hapus</button>
-                            </div>
-                        </div>
-                    </div>
                     <div class="flex items-center justify-between mt-6">
-                        <button @click="openClearKeterangan()" class="px-5 py-2.5 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 font-medium transition-colors dark:bg-red-900/20 dark:text-red-200 dark:hover:bg-red-900/30">Hapus Semua</button>
                         <div class="flex items-center space-x-3">
                             <button @click="editKeteranganModal = false" class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Batal</button>
-                            <button @click="saveKeterangan()" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-md hover:shadow-lg transition-all">Simpan</button>
+                            <button @click="openSaveKeteranganConfirm()" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-md hover:shadow-lg transition-all">Simpan</button>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
+        <div x-show="renameOptionModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm transition-opacity" style="display: none;">
+            <div class="bg-white rounded-xl p-5 sm:p-6 w-[92vw] max-w-[480px] shadow-2xl transform transition-all dark:bg-gray-800">
+                <div class="flex items-center space-x-4 mb-6">
+                    <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 dark:bg-blue-900/30">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-6 w-6 text-blue-700 dark:text-blue-200">
+                            <path d="M13.586 3.586a2 2 0 112.828 2.828l-8.25 8.25a1 1 0 01-.414.263l-3 1a1 1 0 01-1.263-1.263l1-3a1 1 0 01.263-.414l8.25-8.25z" />
+                            <path d="M12.293 5.293l2.414 2.414" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold text-gray-800 dark:text-white">Ubah Nama Keterangan</h2>
+                        <p class="text-sm text-gray-500 mt-1 dark:text-gray-400" x-text="renameOptionOldName"></p>
+                    </div>
+                </div>
+                <div class="space-y-5">
+                    <input x-model="renameOptionNewName" type="text" class="w-full bg-white border border-gray-200 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100 dark:placeholder:text-gray-500">
+                    <div class="flex justify-end space-x-3 mt-6">
+                        <button @click="renameOptionModal = false; renameOptionOldName = ''; renameOptionNewName = ''" class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Batal</button>
+                        <button @click="confirmRenameOption()" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-md hover:shadow-lg transition-all">Simpan</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div x-show="deleteOptionModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm transition-opacity" style="display: none;">
+            <div class="bg-white rounded-xl p-5 sm:p-6 w-[92vw] max-w-[480px] shadow-2xl transform transition-all dark:bg-gray-800">
+                <div class="flex items-center space-x-4 mb-6">
+                    <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 dark:bg-red-900/30">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-600 dark:text-red-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold text-gray-800 dark:text-white">Hapus Opsi Keterangan</h2>
+                        <p class="text-sm text-gray-500 mt-1 dark:text-gray-400">Opsi ini akan dihapus dari daftar.</p>
+                    </div>
+                </div>
+                <div class="space-y-5">
+                    <p class="text-sm text-gray-600 dark:text-gray-300">Apakah Anda yakin ingin menghapus opsi keterangan berikut?</p>
+                    <div class="bg-red-50 border border-red-100 rounded-lg p-4 dark:bg-red-900/20 dark:border-red-900/40">
+                        <div class="font-semibold text-gray-900 dark:text-white" x-text="deleteOptionName"></div>
+                    </div>
+                    <div class="flex justify-end space-x-3 mt-6">
+                        <button @click="deleteOptionModal = false; deleteOptionName = ''" class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Batal</button>
+                        <button @click="confirmDeleteOption()" class="px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium shadow-md hover:shadow-lg transition-all">Ya, Hapus</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div x-show="saveKeteranganConfirmModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm transition-opacity" style="display: none;">
+            <div class="bg-white rounded-xl p-5 sm:p-6 w-[92vw] max-w-[480px] shadow-2xl transform transition-all dark:bg-gray-800">
+                <div class="flex items-center space-x-4 mb-6">
+                    <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 dark:bg-blue-900/30">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-6 w-6 text-blue-700 dark:text-blue-200">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-11.25a.75.75 0 00-1.5 0v4.25c0 .414.336.75.75.75h2.5a.75.75 0 000-1.5h-1.75v-3.5z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold text-gray-800 dark:text-white">Simpan Perubahan</h2>
+                        <p class="text-sm text-gray-500 mt-1 dark:text-gray-400">Pastikan pilihan keterangan sudah sesuai.</p>
+                    </div>
+                </div>
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button @click="saveKeteranganConfirmModal = false" class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Batal</button>
+                    <button @click="confirmSaveKeterangan()" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-md hover:shadow-lg transition-all">OK, Simpan</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Delete Modal -->
         <div x-show="deleteModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm transition-opacity" style="display: none;">
-            <div class="bg-white rounded-xl p-6 w-[480px] shadow-2xl transform transition-all dark:bg-gray-800">
+            <div class="bg-white rounded-xl p-5 sm:p-6 w-[92vw] max-w-[480px] shadow-2xl transform transition-all dark:bg-gray-800">
                 <div class="flex items-center space-x-4 mb-6">
                     <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 dark:bg-red-900/30">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -947,34 +1243,8 @@
             </div>
         </div>
 
-        <div x-show="clearKeteranganModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm transition-opacity" style="display: none;">
-            <div class="bg-white rounded-xl p-6 w-[480px] shadow-2xl transform transition-all dark:bg-gray-800">
-                <div class="flex items-center space-x-4 mb-6">
-                    <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 dark:bg-red-900/30">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-600 dark:text-red-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                        </svg>
-                    </div>
-                    <div>
-                        <h2 class="text-xl font-bold text-gray-800 dark:text-white">Hapus Semua Keterangan</h2>
-                        <p class="text-sm text-gray-500 mt-1 dark:text-gray-400">Tindakan ini tidak dapat dibatalkan.</p>
-                    </div>
-                </div>
-                <div class="space-y-5">
-                    <p class="text-sm text-gray-600 dark:text-gray-300">Apakah Anda yakin ingin menghapus semua keterangan untuk proyek ini?</p>
-                    <div class="bg-red-50 border border-red-100 rounded-lg p-4 dark:bg-red-900/20 dark:border-red-900/40">
-                        <div class="font-semibold text-gray-900 dark:text-white" x-text="selectedPengawas?.nama"></div>
-                    </div>
-                    <div class="flex justify-end space-x-3 mt-6">
-                        <button @click="clearKeteranganModal = false" class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Batal</button>
-                        <button @click="confirmClearKeterangan()" class="px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium shadow-md hover:shadow-lg transition-all">Ya, Hapus</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <div x-show="deleteBuktiModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm transition-opacity" style="display: none;">
-            <div class="bg-white rounded-xl p-6 w-[480px] shadow-2xl transform transition-all dark:bg-gray-800">
+            <div class="bg-white rounded-xl p-5 sm:p-6 w-[92vw] max-w-[480px] shadow-2xl transform transition-all dark:bg-gray-800">
                 <div class="flex items-center space-x-4 mb-6">
                     <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 dark:bg-red-900/30">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-600 dark:text-red-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
