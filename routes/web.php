@@ -81,6 +81,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/list-pengawasan/{id}/bukti', [ListPengawasanController::class, 'deleteBukti'])
         ->whereNumber('id')
         ->name('list-pengawasan.delete-bukti');
+    Route::post('/list-pengawasan/{id}/keterangan/bukti', [ListPengawasanController::class, 'uploadBuktiKeterangan'])
+        ->whereNumber('id')
+        ->name('list-pengawasan.upload-bukti-keterangan');
+    Route::delete('/list-pengawasan/{id}/keterangan/bukti', [ListPengawasanController::class, 'deleteBuktiKeterangan'])
+        ->whereNumber('id')
+        ->name('list-pengawasan.delete-bukti-keterangan');
     Route::delete('/list-pengawasan/{id}', [ListPengawasanController::class, 'destroy'])
         ->whereNumber('id')
         ->name('list-pengawasan.destroy');

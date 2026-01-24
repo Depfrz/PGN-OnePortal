@@ -9,11 +9,13 @@
         editKeteranganModal: false,
         deleteModal: false,
         deleteBuktiModal: false,
+        deleteKeteranganBuktiModal: false,
         deleteOptionModal: false,
         renameOptionModal: false,
         saveKeteranganConfirmModal: false,
         selectedPengawas: null,
         selectedKeterangan: [],
+        selectedKeteranganBukti: { item: null, label: '' },
         newLabel: '',
         deleteOptionName: '',
         renameOptionOldName: '',
@@ -81,7 +83,7 @@
                         deadline: data.deadline || null,
                         deadline_display: deadlineDisplay,
                         status: data.status || 'On Progress',
-                        keterangan: [...this.newPengawas.keterangan],
+                        keterangan: this.newPengawas.keterangan.map(k => ({ label: k, bukti: null })),
                         pengawas_users: data.pengawas_users || [],
                         bukti: { path: null, name: null, mime: null, size: null, uploaded_at: null, url: null }
                     });
@@ -298,7 +300,7 @@
         openEditKeterangan(item) {
             if (!this.canWrite || !this.lpPerms.keterangan) return;
             this.selectedPengawas = JSON.parse(JSON.stringify(item));
-            this.selectedKeterangan = [...item.keterangan];
+            this.selectedKeterangan = (item.keterangan || []).map(k => k.label);
             this.newLabel = '';
             this.editKeteranganModal = true;
         },
@@ -308,7 +310,7 @@
             this.newPengawas.keterangan = this.newPengawas.keterangan.map(o => (o === oldName ? newName : o));
             this.items = this.items.map(it => ({
                 ...it,
-                keterangan: (it.keterangan || []).map(o => (o === oldName ? newName : o))
+                keterangan: (it.keterangan || []).map(o => (o.label === oldName ? { ...o, label: newName } : o))
             }));
         },
         removeKeteranganLabel(name) {
@@ -317,7 +319,7 @@
             this.newPengawas.keterangan = this.newPengawas.keterangan.filter(o => o !== name);
             this.items = this.items.map(it => ({
                 ...it,
-                keterangan: (it.keterangan || []).filter(o => o !== name)
+                keterangan: (it.keterangan || []).filter(o => o.label !== name)
             }));
         },
         openRenameOption(name) {
@@ -459,14 +461,93 @@
             if (!this.selectedKeterangan.includes(label)) this.selectedKeterangan.push(label);
             this.newLabel = '';
         },
+        hasKeterangan(item, label) {
+            if (!item || !item.keterangan) return false;
+            return item.keterangan.some(k => k.label === label);
+        },
+        getKeteranganBukti(item, label) {
+            if (!item || !item.keterangan) return null;
+            const found = item.keterangan.find(k => k.label === label);
+            return found ? found.bukti : null;
+        },
+        async uploadKeteranganBukti(item, label, file) {
+            if (!this.canWrite || !this.lpPerms.bukti) return;
+            const formData = new FormData();
+            formData.append('label', label);
+            formData.append('bukti', file);
+            try {
+                const response = await fetch(`/list-pengawasan/${item.id}/keterangan/bukti`, {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
+                    body: formData
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    const idx = item.keterangan.findIndex(k => k.label === label);
+                    if (idx !== -1) {
+                        item.keterangan[idx].bukti = data.bukti;
+                    }
+                    this.showToast('Bukti keterangan berhasil diunggah');
+                } else {
+                    const d = await response.json().catch(() => ({}));
+                    alert(d.message || 'Gagal mengunggah bukti');
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Terjadi kesalahan sistem');
+            }
+        },
+        deleteKeteranganBukti(item, label) {
+            if (!this.canWrite || !this.lpPerms.bukti) return;
+            this.selectedKeteranganBukti = { item, label };
+            this.deleteKeteranganBuktiModal = true;
+        },
+        async confirmDeleteKeteranganBukti() {
+            const { item, label } = this.selectedKeteranganBukti;
+            if (!item || !label) return;
+            try {
+                const response = await fetch(`/list-pengawasan/${item.id}/keterangan/bukti`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
+                    },
+                    body: JSON.stringify({ label })
+                });
+                if (response.ok) {
+                    const idx = item.keterangan.findIndex(k => k.label === label);
+                    if (idx !== -1) {
+                        item.keterangan[idx].bukti = null;
+                    }
+                    this.showToast('Bukti keterangan berhasil dihapus');
+                    this.deleteKeteranganBuktiModal = false;
+                    this.selectedKeteranganBukti = { item: null, label: '' };
+                } else {
+                    alert('Gagal menghapus bukti');
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Terjadi kesalahan sistem');
+            }
+        },
+        onKeteranganBuktiChange(item, label, e) {
+            const file = e.target.files[0];
+            if (file) this.uploadKeteranganBukti(item, label, file);
+            e.target.value = '';
+        },
         async toggleKeteranganFromTable(item, label) {
             if (!this.canWrite || !this.lpPerms.keterangan) return;
-            const current = Array.isArray(item.keterangan) ? [...item.keterangan] : [];
-            const exists = current.includes(label);
-            const next = exists ? current.filter(l => l !== label) : [...current, label];
+            const currentLabels = (item.keterangan || []).map(k => k.label);
+            const exists = currentLabels.includes(label);
+            const nextLabels = exists ? currentLabels.filter(l => l !== label) : [...currentLabels, label];
 
-            const previous = [...current];
-            item.keterangan = next;
+            const previous = JSON.parse(JSON.stringify(item.keterangan || []));
+
+            if (exists) {
+                 item.keterangan = item.keterangan.filter(k => k.label !== label);
+            } else {
+                 item.keterangan.push({ label: label, bukti: null });
+            }
 
             try {
                 const response = await fetch(`/list-pengawasan/${item.id}/keterangan`, {
@@ -475,14 +556,16 @@
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
                     },
-                    body: JSON.stringify({ keterangan: next })
+                    body: JSON.stringify({ keterangan: nextLabels })
                 });
-                if (!response.ok) {
+                if (response.ok) {
+                    const data = await response.json();
+                    item.keterangan = data.keterangan;
+                    this.showToast('Keterangan diperbarui');
+                } else {
                     item.keterangan = previous;
                     const d = await response.json().catch(() => ({}));
                     this.showToast(d.message || 'Gagal menyimpan keterangan');
-                } else {
-                    this.showToast('Keterangan diperbarui');
                 }
             } catch (e) {
                 console.error(e);
@@ -506,14 +589,15 @@
                 });
                 if (response.ok) {
                     const data = await response.json().catch(() => ({}));
-                    const updated = Array.isArray(data.keterangan) ? data.keterangan : cleaned;
+                    const updated = data.keterangan || []; // Now array of objects
                     this.items = this.items.map(i => (i.id === this.selectedPengawas.id
-                        ? { ...i, keterangan: [...updated] }
+                        ? { ...i, keterangan: updated }
                         : i));
                     if (this.selectedPengawas) {
-                        this.selectedPengawas.keterangan = [...updated];
+                        this.selectedPengawas.keterangan = updated;
                     }
-                    this.selectedKeterangan = [...updated];
+                    // Update selectedKeterangan (which is strings) for the modal
+                    this.selectedKeterangan = updated.map(k => k.label);
                     this.editKeteranganModal = false;
                     this.showToast('Keterangan berhasil disimpan');
                 } else {
@@ -746,7 +830,7 @@
                         </svg>
                     </div>
                 </div>
-                <select x-model="statusFilter" class="w-full sm:w-auto bg-[#f7f8f9] border border-[#d6d9de] rounded-xl px-4 py-3 text-sm text-gray-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100">
+                <select x-model="statusFilter" class="w-full sm:w-auto bg-[#f7f8f9] border border-[#d6d9de] rounded-xl px-7 py-3 text-sm text-gray-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100">
                     <option value="all">Semua Status</option>
                     <option value="pending">Pending</option>
                     <option value="on_progress">On Progress</option>
@@ -903,14 +987,14 @@
 
                                 <div class="mt-4">
                                     <div class="text-[11px] font-semibold tracking-wider text-gray-500 uppercase dark:text-gray-400">Keterangan</div>
-                                    <button type="button" @click="openEditKeterangan(item)" class="mt-2 w-full rounded-xl border border-gray-200 bg-gray-50 p-3 text-left transition-colors hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800" :disabled="!canWrite" :class="!canWrite ? 'opacity-70 cursor-default' : ''">
+                                    <button type="button" @click="openKeteranganMenu($event, item)" class="mt-2 w-full rounded-xl border border-gray-200 bg-gray-50 p-3 text-left transition-colors hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800" :disabled="!canWrite" :class="!canWrite ? 'opacity-70 cursor-default' : ''">
                                         <template x-if="item.keterangan.length === 0">
                                             <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Tambah keterangan</span>
                                         </template>
                                         <template x-if="item.keterangan.length > 0">
                                             <div class="flex flex-wrap gap-2">
-                                                <template x-for="(label, idx) in item.keterangan.slice(0, 3)" :key="label + idx">
-                                                    <span class="inline-flex items-center rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-semibold text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200" x-text="label"></span>
+                                                <template x-for="(k, idx) in item.keterangan.slice(0, 3)" :key="k.label + idx">
+                                                    <span class="inline-flex items-center rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-semibold text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200" x-text="k.label"></span>
                                                 </template>
                                                 <template x-if="item.keterangan.length > 3">
                                                     <span class="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 border border-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-900/40" x-text="'+' + (item.keterangan.length - 3)"></span>
@@ -969,7 +1053,6 @@
                                     <th class="pb-2 font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[140px] pr-4">Deadline</th>
                                     <th class="pb-2 font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[100px] pr-4">Status</th>
                                     <th class="pb-2 font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[200px] pr-4">Keterangan</th>
-                                    <th class="pb-2 font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider pr-4">Bukti</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -1085,7 +1168,7 @@
                                     </button>
                                 </td>
 
-                                <td class="p-4 border-y border-gray-200 dark:border-gray-700 group-hover:border-blue-300 dark:group-hover:border-blue-700 transition-colors">
+                                <td class="p-4 rounded-r-lg border-y border-r border-gray-200 dark:border-gray-700 group-hover:border-blue-300 dark:group-hover:border-blue-700 transition-colors">
                                     <button
                                         type="button"
                                         class="w-full rounded-2xl border border-blue-100 bg-blue-50 px-4 py-2.5 text-left text-sm text-blue-700 flex items-start justify-between gap-3 hover:border-blue-300 hover:bg-blue-100 transition-colors dark:border-blue-900/40 dark:bg-blue-900/20 dark:text-blue-200"
@@ -1096,7 +1179,7 @@
                                         <div class="flex-1 min-w-0">
                                             <span class="block text-[11px] font-semibold uppercase tracking-wide text-blue-500/80 mb-0.5">Keterangan</span>
                                             <span class="block text-xs sm:text-sm font-medium whitespace-normal leading-snug"
-                                                  x-text="item.keterangan.length ? item.keterangan.join(', ') : 'Pilih keterangan…'"></span>
+                                                  x-text="item.keterangan.length ? item.keterangan.map(k => k.label).join(', ') : 'Pilih keterangan…'"></span>
                                         </div>
                                         <div class="flex items-center gap-2 flex-shrink-0 mt-1">
                                             <div class="h-7 w-7 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600 shadow-sm dark:bg-blue-900/40 dark:text-blue-200">
@@ -1106,58 +1189,6 @@
                                             </div>
                                         </div>
                                     </button>
-                                </td>
-
-                                <td class="p-4 rounded-r-lg border-y border-r border-gray-200 dark:border-gray-700 group-hover:border-blue-300 dark:group-hover:border-blue-700 transition-colors">
-                                    <div x-show="canWrite" class="flex items-center justify-between gap-3">
-                                        <input type="file" class="hidden" :id="`bukti-input-${item.id}`" accept="image/png,image/jpeg,application/pdf" @change="onBuktiChange(item, $event)">
-
-                                        <template x-if="!item.bukti || !item.bukti.url">
-                                            <button type="button" @click="triggerUpload(item)" class="inline-flex items-center justify-center rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 transition-colors dark:bg-gray-900 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800">
-                                                Upload
-                                            </button>
-                                        </template>
-
-                                        <template x-if="item.bukti && item.bukti.url">
-                                            <div class="flex items-center gap-1">
-                                                <a :href="item.bukti.url" target="_blank" class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors dark:text-blue-400 dark:hover:bg-blue-900/20" title="Lihat Bukti">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
-                                                        <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" />
-                                                        <path fill-rule="evenodd" d="M1.323 11.447C2.811 6.976 7.028 3.75 12.001 3.75c4.97 0 9.185 3.223 10.675 7.69.12.362.12.752 0 1.113-1.487 4.471-5.705 7.697-10.677 7.697-4.97 0-9.186-3.223-10.675-7.69a1.766 1.766 0 010-1.113zM17.25 12a5.25 5.25 0 11-10.5 0 5.25 5.25 0 0110.5 0z" clip-rule="evenodd" />
-                                                    </svg>
-                                                </a>
-                                            </div>
-                                        </template>
-
-                                        <template x-if="item.bukti && item.bukti.url">
-                                            <div class="flex items-center gap-1 flex-shrink-0">
-                                                <button type="button" @click="triggerUpload(item)" class="p-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors dark:text-gray-300 dark:hover:bg-gray-800" title="Ganti Bukti">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
-                                                        <path d="M21.731 2.269a2.625 2.625 0 00-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 000-3.712zM19.513 8.199l-3.712-3.712-12.15 12.15a5.25 5.25 0 00-1.32 2.214l-.8 2.685a.75.75 0 00.933.933l2.685-.8a5.25 5.25 0 002.214-1.32L19.513 8.2z" />
-                                                    </svg>
-                                                </button>
-                                                <button type="button" @click="openDeleteBukti(item)" class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors dark:hover:bg-red-900/20" title="Hapus Bukti">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-                                                    </svg>
-                                                </button>
-                                            </div>
-                                        </template>
-                                    </div>
-
-                                    <div x-show="!canWrite">
-                                        <template x-if="item.bukti && item.bukti.url">
-                                            <a :href="item.bukti.url" target="_blank" class="inline-flex items-center justify-center p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors dark:text-blue-400 dark:hover:bg-blue-900/20" title="Lihat Bukti">
-                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
-                                                    <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" />
-                                                    <path fill-rule="evenodd" d="M1.323 11.447C2.811 6.976 7.028 3.75 12.001 3.75c4.97 0 9.185 3.223 10.675 7.69.12.362.12.752 0 1.113-1.487 4.471-5.705 7.697-10.677 7.697-4.97 0-9.186-3.223-10.675-7.69a1.766 1.766 0 010-1.113zM17.25 12a5.25 5.25 0 11-10.5 0 5.25 5.25 0 0110.5 0z" clip-rule="evenodd" />
-                                                </svg>
-                                            </a>
-                                        </template>
-                                        <template x-if="!item.bukti || !item.bukti.url">
-                                            <div class="text-sm text-gray-500 dark:text-gray-400">-</div>
-                                        </template>
-                                    </div>
                                 </td>
                                     </tr>
                                 </template>
@@ -1223,38 +1254,68 @@
                 >
                     <div class="max-h-64 overflow-y-auto py-2">
                         <template x-for="opt in options" :key="'opt-menu-' + (keteranganMenu.item?.id || 0) + '-' + opt">
-                            <button
-                                type="button"
-                                class="w-full px-3 py-2 text-left text-xs sm:text-sm hover:bg-gray-50 dark:hover:bg-gray-700"
-                                @click="toggleKeteranganFromTable(keteranganMenu.item, opt)"
-                                :disabled="!canWrite"
-                            >
-                                <div
-                                    class="flex items-center gap-3 rounded-lg border border-transparent px-1 py-0.5"
-                                    :class="(keteranganMenu.item?.keterangan || []).includes(opt)
-                                        ? 'bg-blue-50 border-blue-100 dark:bg-blue-900/20 dark:border-blue-900/40'
-                                        : ''"
+                            <div class="flex items-center justify-between px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 group">
+                                <button
+                                    type="button"
+                                    class="flex-1 text-left text-xs sm:text-sm"
+                                    @click="toggleKeteranganFromTable(keteranganMenu.item, opt)"
+                                    :disabled="!canWrite"
                                 >
                                     <div
-                                        class="h-5 w-5 rounded-md flex items-center justify-center flex-shrink-0"
-                                        :class="(keteranganMenu.item?.keterangan || []).includes(opt)
-                                            ? 'bg-blue-600 text-white'
-                                            : 'bg-white border border-gray-300 text-transparent dark:bg-gray-800 dark:border-gray-600'"
+                                        class="flex items-center gap-3 rounded-lg border border-transparent px-1 py-0.5"
+                                        :class="hasKeterangan(keteranganMenu.item, opt)
+                                            ? 'bg-blue-50 border-blue-100 dark:bg-blue-900/20 dark:border-blue-900/40'
+                                            : ''"
                                     >
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-3.5 w-3.5">
-                                            <path fill-rule="evenodd" d="M16.704 4.294a.75.75 0 01.002 1.06l-8.25 8.25a.75.75 0 01-1.06 0l-3.75-3.75a.75.75 0 011.06-1.06l3.22 3.22 7.72-7.72a.75.75 0 011.058 0z" clip-rule="evenodd" />
-                                        </svg>
+                                        <div
+                                            class="h-5 w-5 rounded-md flex items-center justify-center flex-shrink-0"
+                                            :class="hasKeterangan(keteranganMenu.item, opt)
+                                                ? 'bg-blue-600 text-white'
+                                                : 'bg-white border border-gray-300 text-transparent dark:bg-gray-800 dark:border-gray-600'"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-3.5 w-3.5">
+                                                <path fill-rule="evenodd" d="M16.704 4.294a.75.75 0 01.002 1.06l-8.25 8.25a.75.75 0 01-1.06 0l-3.75-3.75a.75.75 0 011.06-1.06l3.22 3.22 7.72-7.72a.75.75 0 011.058 0z" clip-rule="evenodd" />
+                                            </svg>
+                                        </div>
+                                        <span class="truncate text-gray-800 dark:text-gray-100" x-text="opt"></span>
                                     </div>
-                                    <span class="truncate text-gray-800 dark:text-gray-100" x-text="opt"></span>
-                                </div>
-                            </button>
+                                </button>
+
+                                <template x-if="hasKeterangan(keteranganMenu.item, opt)">
+                                    <div class="flex items-center gap-1 ml-2">
+                                        <template x-if="!getKeteranganBukti(keteranganMenu.item, opt)">
+                                            <label class="cursor-pointer p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Upload Bukti Keterangan">
+                                                <input type="file" class="hidden" @change="onKeteranganBuktiChange(keteranganMenu.item, opt, $event)" accept="image/png,image/jpeg,application/pdf">
+                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4">
+                                                    <path fill-rule="evenodd" d="M11.47 2.47a.75.75 0 011.06 0l4.5 4.5a.75.75 0 01-1.06 1.06l-3.22-3.22V16.5a.75.75 0 01-1.5 0V4.81L8.03 8.03a.75.75 0 01-1.06-1.06l4.5-4.5zM3 15.75a.75.75 0 01.75.75v2.25a1.5 1.5 0 001.5 1.5h13.5a1.5 1.5 0 001.5-1.5V16.5a.75.75 0 011.5 0v2.25a3 3 0 01-3 3H5.25a3 3 0 01-3-3V16.5a.75.75 0 01.75-.75z" clip-rule="evenodd" />
+                                                </svg>
+                                            </label>
+                                        </template>
+                                        <template x-if="getKeteranganBukti(keteranganMenu.item, opt)">
+                                            <div class="flex items-center gap-1">
+                                                <a :href="getKeteranganBukti(keteranganMenu.item, opt).url" target="_blank" class="p-1.5 text-green-600 hover:bg-green-50 rounded-lg transition-colors" title="Lihat Bukti">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4">
+                                                        <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" />
+                                                        <path fill-rule="evenodd" d="M1.323 11.447C2.811 6.976 7.028 3.75 12.001 3.75c4.97 0 9.185 3.223 10.675 7.69.12.362.12.752 0 1.113-1.487 4.471-5.705 7.697-10.677 7.697-4.97 0-9.186-3.223-10.675-7.69a1.766 1.766 0 010-1.113zM17.25 12a5.25 5.25 0 11-10.5 0 5.25 5.25 0 0110.5 0z" clip-rule="evenodd" />
+                                                    </svg>
+                                                </a>
+                                                <button @click="deleteKeteranganBukti(keteranganMenu.item, opt)" class="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Hapus Bukti">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4">
+                                                        <path fill-rule="evenodd" d="M16.5 4.478v.227a48.816 48.816 0 013.878.512.75.75 0 11-.49 1.478 47.429 47.429 0 00-3.89-.514V13.5a1.5 1.5 0 01-3 0V6.18c-1.316.12-2.614.28-3.89.514a.75.75 0 11-.49-1.478 48.83 48.83 0 013.878-.512V4.478a.75.75 0 01.75-.75h1.5a.75.75 0 01.75.75z" clip-rule="evenodd" />
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </template>
+                            </div>
                         </template>
                     </div>
-                    <div class="border-t border-gray-100 dark:border-gray-700 px-3 py-2 flex justify-end" x-show="canWrite && lpPerms.edit_keterangan">
+                    <div class="border-t border-gray-100 dark:border-gray-700 px-3 py-2 flex justify-end" x-show="canWrite && lpPerms.keterangan">
                         <button
                             type="button"
                             class="text-[11px] font-medium text-blue-600 hover:text-blue-700 hover:underline dark:text-blue-300 dark:hover:text-blue-200"
-                            @click="closeKeteranganMenu(); openEditKeterangan(keteranganMenu.item)"
+                            @click="openEditKeterangan(keteranganMenu.item); closeKeteranganMenu()"
                         >
                             Edit keterangan
                         </button>
@@ -1561,6 +1622,33 @@
                     <div class="flex justify-end space-x-3 mt-6">
                         <button @click="deleteBuktiModal = false; selectedBuktiItem = null" class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Batal</button>
                         <button @click="confirmDeleteBukti()" class="px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium shadow-md hover:shadow-lg transition-all">Ya, Hapus</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div x-show="deleteKeteranganBuktiModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm transition-opacity" style="display: none;">
+            <div class="bg-white rounded-xl p-5 sm:p-6 w-[92vw] max-w-[480px] shadow-2xl transform transition-all dark:bg-gray-800">
+                <div class="flex items-center space-x-4 mb-6">
+                    <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 dark:bg-red-900/30">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-600 dark:text-red-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold text-gray-800 dark:text-white">Hapus Bukti Keterangan</h2>
+                        <p class="text-sm text-gray-500 mt-1 dark:text-gray-400">File bukti akan dihapus dari sistem.</p>
+                    </div>
+                </div>
+                <div class="space-y-5">
+                    <p class="text-sm text-gray-600 dark:text-gray-300">Apakah Anda yakin ingin menghapus bukti untuk keterangan berikut?</p>
+                    <div class="bg-red-50 border border-red-100 rounded-lg p-4 dark:bg-red-900/20 dark:border-red-900/40">
+                        <div class="font-semibold text-gray-900 dark:text-white" x-text="selectedKeteranganBukti?.label"></div>
+                        <div class="text-sm text-gray-500 dark:text-gray-400" x-text="selectedKeteranganBukti?.item?.nama"></div>
+                    </div>
+                    <div class="flex justify-end space-x-3 mt-6">
+                        <button @click="deleteKeteranganBuktiModal = false; selectedKeteranganBukti = { item: null, label: '' }" class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Batal</button>
+                        <button @click="confirmDeleteKeteranganBukti()" class="px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium shadow-md hover:shadow-lg transition-all">Ya, Hapus</button>
                     </div>
                 </div>
             </div>
