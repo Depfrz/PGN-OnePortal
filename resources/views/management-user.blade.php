@@ -8,6 +8,7 @@
         editAccessModal: false,
         showSuccessModal: false,
         successMessage: '',
+        toastType: 'success',
         selectedUser: null,
         selectedAccess: [],
         dashboardAccess: [],
@@ -42,6 +43,16 @@
         
         showSuccess(message) {
             this.successMessage = message;
+            this.toastType = 'success';
+            this.showSuccessModal = true;
+            setTimeout(() => {
+                this.showSuccessModal = false;
+            }, 5000);
+        },
+
+        showError(message) {
+            this.successMessage = message;
+            this.toastType = 'error';
             this.showSuccessModal = true;
             setTimeout(() => {
                 this.showSuccessModal = false;
@@ -72,6 +83,7 @@
             this.listPengawasanPermissions = {
                 tambah_proyek: true,
                 nama_proyek: true,
+                pengawas: true,
                 deadline: true,
                 status: true,
                 keterangan: true,
@@ -104,15 +116,15 @@
                 });
                 
                 if (response.ok) {
-                    alert('User berhasil ditambahkan');
+                    this.showSuccess('User berhasil ditambahkan');
                     window.location.reload();
                 } else {
                     const data = await response.json();
-                    alert('Gagal menambahkan user: ' + (data.message || 'Unknown error'));
+                    this.showSuccess('Gagal menambahkan user: ' + (data.message || 'Unknown error'));
                 }
             } catch (error) {
                 console.error(error);
-                alert('Terjadi kesalahan sistem');
+                this.showSuccess('Terjadi kesalahan sistem');
             }
         },
 
@@ -134,13 +146,13 @@
                         this.users[index].role = this.selectedUser.role;
                     }
                     this.editRoleModal = false;
-                    alert('Role berhasil diperbarui');
+                    this.showSuccess('Role berhasil diperbarui');
                 } else {
-                    alert('Gagal memperbarui role');
+                    this.showSuccess('Gagal memperbarui role');
                 }
             } catch (error) {
                 console.error(error);
-                alert('Terjadi kesalahan sistem');
+                this.showSuccess('Terjadi kesalahan sistem');
             }
         },
 
@@ -169,17 +181,17 @@
                     this.editAccessModal = false;
                     this.showSuccess('Hak akses berhasil diperbarui');
                 } else {
-                    alert('Gagal memperbarui hak akses');
+                    this.showSuccess('Gagal memperbarui hak akses');
                 }
             } catch (error) {
                 console.error(error);
-                alert('Terjadi kesalahan sistem');
+                this.showSuccess('Terjadi kesalahan sistem');
             }
         },
 
         async updatePassword() {
             if (this.newPassword !== this.newPasswordConfirmation) {
-                alert('Password konfirmasi tidak cocok');
+                this.showError('Password konfirmasi tidak cocok');
                 return;
             }
 
@@ -198,14 +210,14 @@
 
                 if (response.ok) {
                     this.resetPasswordModal = false;
-                    alert('Password berhasil direset');
+                    this.showSuccess('Password berhasil direset');
                 } else {
                     const data = await response.json();
-                    alert('Gagal reset password: ' + (data.message || 'Unknown error'));
+                    this.showError('Gagal reset password: ' + (data.message || 'Unknown error'));
                 }
             } catch (error) {
                 console.error(error);
-                alert('Terjadi kesalahan sistem');
+                this.showError('Terjadi kesalahan sistem');
             }
         },
 
@@ -222,14 +234,14 @@
                 if (response.ok) {
                     this.users = this.users.filter(u => u.id !== this.selectedUser.id);
                     this.deleteUserModal = false;
-                    alert('User berhasil dihapus');
+                    this.showSuccess('User berhasil dihapus');
                 } else {
                     const data = await response.json();
-                    alert('Gagal menghapus user: ' + (data.message || 'Unknown error'));
+                    this.showSuccess('Gagal menghapus user: ' + (data.message || 'Unknown error'));
                 }
             } catch (error) {
                 console.error(error);
-                alert('Terjadi kesalahan sistem');
+                this.showSuccess('Terjadi kesalahan sistem');
             }
         }
     }" class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 lg:p-8 min-h-[800px] flex flex-col transition-colors duration-300">
@@ -509,6 +521,21 @@
                             $finalGroupOrder = collect($orderedGroups)->merge($otherGroups);
                             
                             $subModules = ['Dokumen Favorit', 'Riwayat Dokumen', 'Pengecekan File', 'Upload Dokumen', 'Beranda'];
+                            $accessDescriptions = [
+                                'Buku Saku' => [
+                                    'Beranda' => 'Akses halaman beranda Buku Saku.',
+                                    'Dokumen Favorit' => 'Melihat dan mengelola dokumen favorit.',
+                                    'Pengecekan File' => 'Melakukan pengecekan dan approval dokumen.',
+                                    'Riwayat Dokumen' => 'Melihat riwayat dokumen.',
+                                    'Upload Dokumen' => 'Mengunggah dokumen baru.',
+                                ],
+                                'Web Utama' => [
+                                    'Integrasi Sistem' => 'Mengelola integrasi sistem.',
+                                    'Management User' => 'Mengelola pengguna dan hak akses.',
+                                    'Data History' => 'Melihat data riwayat sistem.',
+                                    'History' => 'Melihat riwayat aktivitas.',
+                                ],
+                            ];
                         @endphp
 
                         @foreach($finalGroupOrder as $groupName)
@@ -557,9 +584,18 @@
                                     @endif
                                 </div>
                                 
+                                @if(in_array($groupName, ['Buku Saku', 'Web Utama']))
+                                    <div class="text-[11px] font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-300 mb-2">
+                                        Hak Akses Detail
+                                    </div>
+                                @endif
+
                                 <!-- Module Items -->
                                 <div class="grid grid-cols-1 gap-3">
                                     @foreach($itemModules as $module)
+                                        @php
+                                            $desc = $accessDescriptions[$groupName][$module->name] ?? null;
+                                        @endphp
                                         <div class="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-200 dark:hover:border-blue-800 transition-colors">
                                             <!-- Access Checkbox (Left) -->
                                             <label class="flex items-center gap-3 cursor-pointer flex-grow">
@@ -567,66 +603,80 @@
                                                        value="{{ $module->name }}" 
                                                        x-model="selectedAccess" 
                                                        class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                                                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ $module->name }}</span>
+                                                <div class="flex flex-col">
+                                                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ $module->name }}</span>
+                                                    @if($desc)
+                                                        <span class="text-xs text-gray-500 dark:text-gray-400">{{ $desc }}</span>
+                                                    @endif
+                                                </div>
                                             </label>
                                         </div>
                                     @endforeach
                                 </div>
 
                                 @if($groupName === 'List Pengawasan')
-                                    <div class="mt-3 grid grid-cols-1 gap-2 border border-blue-100 dark:border-blue-900/40 rounded-xl bg-blue-50/40 dark:bg-blue-900/10 px-3 py-3">
-                                        <div class="text-[11px] font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-300 mb-1">
+                                    <div class="mt-4">
+                                        <div class="text-[11px] font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-300 mb-2">
                                             Hak Akses Detail
                                         </div>
-                                        <label class="flex items-center gap-3 cursor-pointer px-2 py-1 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30">
-                                            <input type="checkbox" x-model="listPengawasanPermissions.tambah_proyek" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                                            <div class="flex flex-col">
-                                                <span class="text-sm font-medium text-gray-800 dark:text-gray-200">Tambah Proyek</span>
-                                                <span class="text-xs text-gray-500 dark:text-gray-400">Boleh menambahkan proyek baru.</span>
-                                            </div>
-                                        </label>
-                                        <label class="flex items-center gap-3 cursor-pointer px-2 py-1 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30">
-                                            <input type="checkbox" x-model="listPengawasanPermissions.nama_proyek" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                                            <div class="flex flex-col">
-                                                <span class="text-sm font-medium text-gray-800 dark:text-gray-200">Nama Proyek</span>
-                                                <span class="text-xs text-gray-500 dark:text-gray-400">Boleh mengedit dan menghapus proyek.</span>
-                                            </div>
-                                        </label>
-                                        <label class="flex items-center gap-3 cursor-pointer px-2 py-1 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30">
-                                            <input type="checkbox" x-model="listPengawasanPermissions.deadline" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                                            <div class="flex flex-col">
-                                                <span class="text-sm font-medium text-gray-800 dark:text-gray-200">Deadline</span>
-                                                <span class="text-xs text-gray-500 dark:text-gray-400">Boleh mengubah tanggal deadline.</span>
-                                            </div>
-                                        </label>
-                                        <label class="flex items-center gap-3 cursor-pointer px-2 py-1 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30">
-                                            <input type="checkbox" x-model="listPengawasanPermissions.status" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                                            <div class="flex flex-col">
-                                                <span class="text-sm font-medium text-gray-800 dark:text-gray-200">Status</span>
-                                                <span class="text-xs text-gray-500 dark:text-gray-400">Boleh mengganti status progress proyek.</span>
-                                            </div>
-                                        </label>
-                                        <label class="flex items-center gap-3 cursor-pointer px-2 py-1 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30">
-                                            <input type="checkbox" x-model="listPengawasanPermissions.keterangan" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                                            <div class="flex flex-col">
-                                                <span class="text-sm font-medium text-gray-800 dark:text-gray-200">Keterangan</span>
-                                                <span class="text-xs text-gray-500 dark:text-gray-400">Boleh ceklis/uncentang keterangan yang sudah ada.</span>
-                                            </div>
-                                        </label>
-                                        <label class="flex items-center gap-3 cursor-pointer px-2 py-1 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30">
-                                            <input type="checkbox" x-model="listPengawasanPermissions.edit_keterangan" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                                            <div class="flex flex-col">
-                                                <span class="text-sm font-medium text-gray-800 dark:text-gray-200">Edit Keterangan</span>
-                                                <span class="text-xs text-gray-500 dark:text-gray-400">Boleh menambah, rename, dan hapus kategori keterangan.</span>
-                                            </div>
-                                        </label>
-                                        <label class="flex items-center gap-3 cursor-pointer px-2 py-1 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30">
-                                            <input type="checkbox" x-model="listPengawasanPermissions.bukti" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                                            <div class="flex flex-col">
-                                                <span class="text-sm font-medium text-gray-800 dark:text-gray-200">Bukti</span>
-                                                <span class="text-xs text-gray-500 dark:text-gray-400">Boleh upload, ganti, dan hapus file bukti.</span>
-                                            </div>
-                                        </label>
+                                        <div class="grid grid-cols-1 gap-3">
+                                            <label class="flex items-center gap-4 cursor-pointer p-4 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-200 dark:hover:border-blue-800 transition-colors">
+                                                <input type="checkbox" x-model="listPengawasanPermissions.tambah_proyek" class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                                                <div class="flex flex-col">
+                                                    <span class="text-sm font-semibold text-gray-800 dark:text-gray-200">Tambah Proyek</span>
+                                                    <span class="text-xs text-gray-500 dark:text-gray-400">Boleh menambahkan proyek baru.</span>
+                                                </div>
+                                            </label>
+                                            <label class="flex items-center gap-4 cursor-pointer p-4 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-200 dark:hover:border-blue-800 transition-colors">
+                                                <input type="checkbox" x-model="listPengawasanPermissions.nama_proyek" class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                                                <div class="flex flex-col">
+                                                    <span class="text-sm font-semibold text-gray-800 dark:text-gray-200">Nama Proyek</span>
+                                                    <span class="text-xs text-gray-500 dark:text-gray-400">Boleh mengedit dan menghapus proyek.</span>
+                                                </div>
+                                            </label>
+                                            <label class="flex items-center gap-4 cursor-pointer p-4 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-200 dark:hover:border-blue-800 transition-colors">
+                                                <input type="checkbox" x-model="listPengawasanPermissions.pengawas" class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                                                <div class="flex flex-col">
+                                                    <span class="text-sm font-semibold text-gray-800 dark:text-gray-200">Pengawas</span>
+                                                    <span class="text-xs text-gray-500 dark:text-gray-400">Boleh mengganti atau menghapus pengawas.</span>
+                                                </div>
+                                            </label>
+                                            <label class="flex items-center gap-4 cursor-pointer p-4 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-200 dark:hover:border-blue-800 transition-colors">
+                                                <input type="checkbox" x-model="listPengawasanPermissions.deadline" class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                                                <div class="flex flex-col">
+                                                    <span class="text-sm font-semibold text-gray-800 dark:text-gray-200">Deadline</span>
+                                                    <span class="text-xs text-gray-500 dark:text-gray-400">Boleh mengubah tanggal deadline.</span>
+                                                </div>
+                                            </label>
+                                            <label class="flex items-center gap-4 cursor-pointer p-4 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-200 dark:hover:border-blue-800 transition-colors">
+                                                <input type="checkbox" x-model="listPengawasanPermissions.status" class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                                                <div class="flex flex-col">
+                                                    <span class="text-sm font-semibold text-gray-800 dark:text-gray-200">Status</span>
+                                                    <span class="text-xs text-gray-500 dark:text-gray-400">Boleh mengganti status progress proyek.</span>
+                                                </div>
+                                            </label>
+                                            <label class="flex items-center gap-4 cursor-pointer p-4 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-200 dark:hover:border-blue-800 transition-colors">
+                                                <input type="checkbox" x-model="listPengawasanPermissions.keterangan" class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                                                <div class="flex flex-col">
+                                                    <span class="text-sm font-semibold text-gray-800 dark:text-gray-200">Keterangan</span>
+                                                    <span class="text-xs text-gray-500 dark:text-gray-400">Boleh ceklis/uncentang keterangan yang sudah ada.</span>
+                                                </div>
+                                            </label>
+                                            <label class="flex items-center gap-4 cursor-pointer p-4 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-200 dark:hover:border-blue-800 transition-colors">
+                                                <input type="checkbox" x-model="listPengawasanPermissions.edit_keterangan" class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                                                <div class="flex flex-col">
+                                                    <span class="text-sm font-semibold text-gray-800 dark:text-gray-200">Edit Keterangan</span>
+                                                    <span class="text-xs text-gray-500 dark:text-gray-400">Boleh menambah, rename, dan hapus kategori keterangan.</span>
+                                                </div>
+                                            </label>
+                                            <label class="flex items-center gap-4 cursor-pointer p-4 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-200 dark:hover:border-blue-800 transition-colors">
+                                                <input type="checkbox" x-model="listPengawasanPermissions.bukti" class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                                                <div class="flex flex-col">
+                                                    <span class="text-sm font-semibold text-gray-800 dark:text-gray-200">Bukti</span>
+                                                    <span class="text-xs text-gray-500 dark:text-gray-400">Boleh upload, ganti, dan hapus file bukti.</span>
+                                                </div>
+                                            </label>
+                                        </div>
                                     </div>
                                 @endif
                             </div>
@@ -658,15 +708,17 @@
             <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4 transform transition-all flex flex-col items-center text-center"
                  @click.away="showSuccessModal = false">
                 
-                <!-- Green Check Icon -->
-                <div class="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <div class="w-16 h-16 rounded-full flex items-center justify-center mb-4"
+                     :class="toastType === 'error' ? 'bg-red-100 dark:bg-red-900/30' : 'bg-green-100 dark:bg-green-900/30'">
+                    <svg x-show="toastType !== 'error'" xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    <svg x-show="toastType === 'error'" xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                 </div>
 
-                <!-- Title & Message -->
-                <h3 id="success-title" class="text-xl font-bold text-gray-900 dark:text-white mb-2">Berhasil!</h3>
+                <h3 id="success-title" class="text-xl font-bold text-gray-900 dark:text-white mb-2" x-text="toastType === 'error' ? 'Gagal!' : 'Berhasil!'"></h3>
                 <p class="text-gray-600 dark:text-gray-300 mb-6" x-text="successMessage"></p>
 
                 <!-- Close Button -->

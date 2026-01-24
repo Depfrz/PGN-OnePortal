@@ -187,7 +187,7 @@
             }
         },
         openManagePengawasUser(item, user) {
-            if (!this.canWrite) return;
+            if (!this.canWrite || !this.lpPerms.pengawas) return;
             this.selectedPengawasUserItem = item;
             this.selectedPengawasUserAccount = user;
             this.replacePengawasUserId = user?.id || '';
@@ -200,7 +200,7 @@
             this.replacePengawasUserId = '';
         },
         async replacePengawasUser() {
-            if (!this.canWrite) return;
+            if (!this.canWrite || !this.lpPerms.pengawas) return;
             const item = this.selectedPengawasUserItem;
             const account = this.selectedPengawasUserAccount;
             const newUserId = Number(this.replacePengawasUserId);
@@ -240,7 +240,7 @@
             }
         },
         async removePengawasUser() {
-            if (!this.canWrite) return;
+            if (!this.canWrite || !this.lpPerms.pengawas) return;
             const item = this.selectedPengawasUserItem;
             const account = this.selectedPengawasUserAccount;
             if (!item || !account) return;
@@ -778,10 +778,10 @@
                                                 <template x-for="u in item.pengawas_users" :key="`mobile-pengawas-${item.id}-${u.id}`">
                                                     <div class="min-w-0">
                                                         <div class="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate" x-text="u.name"></div>
-                                                        <template x-if="canWrite">
+                        <template x-if="canWrite && lpPerms.pengawas">
                                                             <button type="button" class="text-xs text-blue-600 hover:underline dark:text-blue-400" @click="openManagePengawasUser(item, u)" x-text="u.email"></button>
                                                         </template>
-                                                        <template x-if="!canWrite">
+                        <template x-if="!canWrite || !lpPerms.pengawas">
                                                             <div class="text-xs text-gray-500 dark:text-gray-400" x-text="u.email"></div>
                                                         </template>
                                                     </div>
@@ -1000,7 +1000,9 @@
                                             <div class="min-w-0">
                                                 <div class="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate" x-text="u.name"></div>
                                                 <template x-if="canWrite">
-                                                    <button type="button" class="text-xs text-blue-600 hover:underline dark:text-blue-400" @click="openManagePengawasUser(item, u)" x-text="u.email"></button>
+                                                    <button type="button" class="text-xs text-blue-600 hover:underline dark:text-blue-400" @click="openManagePengawasUser(item, u)" x-text="u.email" x-show="canWrite && lpPerms.pengawas"></button>
+                                                    <div class="text-xs text-gray-500 dark:text-gray-400" x-text="u.email" x-show="!canWrite || !lpPerms.pengawas"></div>
+                                                    <div class="text-xs text-gray-500 dark:text-gray-400" x-text="u.email" x-show="!canWrite || !lpPerms.pengawas"></div>
                                                 </template>
                                                 <template x-if="!canWrite">
                                                     <div class="text-xs text-gray-500 dark:text-gray-400" x-text="u.email"></div>
@@ -1119,7 +1121,7 @@
                                                     </button>
                                                 </template>
                                             </div>
-                                            <div class="border-t border-gray-100 dark:border-gray-700 px-3 py-2 flex justify-end" x-show="canWrite && lpPerms.keterangan">
+                                            <div class="border-t border-gray-100 dark:border-gray-700 px-3 py-2 flex justify-end" x-show="canWrite && lpPerms.edit_keterangan">
                                                 <button
                                                     type="button"
                                                     class="text-[11px] font-medium text-blue-600 hover:text-blue-700 hover:underline dark:text-blue-300 dark:hover:text-blue-200"

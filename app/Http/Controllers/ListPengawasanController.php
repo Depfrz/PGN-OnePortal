@@ -5,12 +5,15 @@ namespace App\Http\Controllers;
 use App\Models\Module;
 use App\Models\ModuleAccess;
 use App\Models\User;
+use App\Notifications\SystemNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Carbon\Carbon;
+use Spatie\Permission\Exceptions\RoleDoesNotExist;
 
 class ListPengawasanController extends Controller
 {
@@ -90,6 +93,7 @@ class ListPengawasanController extends Controller
             return [
                 'tambah_proyek' => true,
                 'nama_proyek' => true,
+                'pengawas' => true,
                 'deadline' => true,
                 'status' => true,
                 'keterangan' => true,
@@ -103,6 +107,7 @@ class ListPengawasanController extends Controller
             return [
                 'tambah_proyek' => false,
                 'nama_proyek' => false,
+                'pengawas' => false,
                 'deadline' => false,
                 'status' => false,
                 'keterangan' => false,
@@ -118,6 +123,7 @@ class ListPengawasanController extends Controller
         $base = [
             'tambah_proyek' => false,
             'nama_proyek' => false,
+            'pengawas' => false,
             'deadline' => false,
             'status' => false,
             'keterangan' => false,
@@ -130,6 +136,63 @@ class ListPengawasanController extends Controller
         }
 
         return array_merge($base, $access->extra_permissions['list_pengawasan']);
+    }
+
+    private function getListPengawasanNotificationRecipients(int $pengawasId, int $actorId)
+    {
+        $module = Module::where('slug', 'list-pengawasan')->first();
+        $moduleUserIds = collect();
+        if ($module) {
+            $moduleUserIds = ModuleAccess::where('module_id', $module->id)
+                ->where('can_read', true)
+                ->pluck('user_id');
+        }
+
+        $assignedUserIds = DB::table('pengawas_users')
+            ->where('pengawas_id', $pengawasId)
+            ->pluck('user_id');
+
+        if ($moduleUserIds->isNotEmpty()) {
+            $assignedUserIds = $assignedUserIds->intersect($moduleUserIds);
+        }
+
+        try {
+            $adminIds = User::role(['Admin', 'Supervisor'])->pluck('id');
+        } catch (RoleDoesNotExist) {
+            $adminIds = collect();
+        }
+
+        $recipientIds = $assignedUserIds
+            ->merge($adminIds)
+            ->push($actorId)
+            ->unique()
+            ->values();
+
+        if ($recipientIds->isEmpty()) {
+            return collect();
+        }
+
+        return User::whereIn('id', $recipientIds)->get();
+    }
+
+    private function notifyListPengawasan(User $actor, int $pengawasId, string $action, string $description): void
+    {
+        $recipients = $this->getListPengawasanNotificationRecipients($pengawasId, $actor->id);
+        if ($recipients->isEmpty()) {
+            return;
+        }
+
+        Notification::send($recipients, new SystemNotification(
+            $action,
+            'List Pengawasan',
+            $description,
+            $actor->name
+        ));
+    }
+
+    private function getPengawasName(int $pengawasId): ?string
+    {
+        return DB::table('pengawas')->where('id', $pengawasId)->value('name');
     }
 
     public function index(Request $request)
@@ -293,6 +356,8 @@ class ListPengawasanController extends Controller
             ->map(fn($u) => ['id' => $u->id, 'name' => $u->name, 'email' => $u->email])
             ->toArray();
 
+        $this->notifyListPengawasan($user, $pengawasId, 'create', "Menambahkan proyek pengawasan: {$data['nama']}");
+
         return response()->json([
             'message' => 'Pengawas berhasil ditambahkan',
             'id' => $pengawasId,
@@ -330,6 +395,8 @@ class ListPengawasanController extends Controller
             return response()->json(['message' => 'Pengawas tidak ditemukan'], 404);
         }
 
+        $this->notifyListPengawasan($user, $id, 'update', "Memperbarui proyek pengawasan: {$data['nama']}");
+
         return response()->json(['message' => 'Pengawas berhasil diperbarui']);
     }
 
@@ -338,6 +405,9 @@ class ListPengawasanController extends Controller
         /** @var \App\Models\User $user */
         $user = Auth::user();
         if (!$this->canWriteForModule($user)) {
+            return response()->json(['message' => 'Unauthorized action.'], 403);
+        }
+        if (!$this->getListPengawasanPermissions($user)['pengawas']) {
             return response()->json(['message' => 'Unauthorized action.'], 403);
         }
         if (!$this->canAccessPengawas($user, $id)) {
@@ -376,6 +446,9 @@ class ListPengawasanController extends Controller
             ['created_at' => now(), 'updated_at' => now()]
         );
 
+        $projectName = $this->getPengawasName($id) ?? 'Proyek';
+        $this->notifyListPengawasan($user, $id, 'update', "Mengubah pengawas proyek: {$projectName}");
+
         $assignedUsersMap = $this->getAssignedUsersMap([$id]);
 
         return response()->json([
@@ -389,6 +462,9 @@ class ListPengawasanController extends Controller
         /** @var \App\Models\User $user */
         $user = Auth::user();
         if (!$this->canWriteForModule($user)) {
+            return response()->json(['message' => 'Unauthorized action.'], 403);
+        }
+        if (!$this->getListPengawasanPermissions($user)['pengawas']) {
             return response()->json(['message' => 'Unauthorized action.'], 403);
         }
         if (!$this->canAccessPengawas($user, $id)) {
@@ -407,6 +483,9 @@ class ListPengawasanController extends Controller
         if (!$deleted) {
             return response()->json(['message' => 'Pengawas tidak ditemukan'], 404);
         }
+
+        $projectName = $this->getPengawasName($id) ?? 'Proyek';
+        $this->notifyListPengawasan($user, $id, 'update', "Menghapus pengawas dari proyek: {$projectName}");
 
         $assignedUsersMap = $this->getAssignedUsersMap([$id]);
 
@@ -457,6 +536,9 @@ class ListPengawasanController extends Controller
             );
         }
 
+        $projectName = $this->getPengawasName($id) ?? 'Proyek';
+        $this->notifyListPengawasan($user, $id, 'update', "Memperbarui keterangan proyek: {$projectName}");
+
         return response()->json([
             'message' => 'Keterangan berhasil diperbarui',
             'keterangan' => $labels->values()->all(),
@@ -474,8 +556,12 @@ class ListPengawasanController extends Controller
             return response()->json(['message' => 'Unauthorized action.'], 403);
         }
 
+        $projectName = $this->getPengawasName($id) ?? 'Proyek';
+
         DB::table('pengawas_keterangan')->where('pengawas_id', $id)->delete();
         DB::table('pengawas')->where('id', $id)->delete();
+
+        $this->notifyListPengawasan($user, $id, 'delete', "Menghapus proyek pengawasan: {$projectName}");
 
         return response()->json(['message' => 'Pengawas berhasil dihapus']);
     }
@@ -504,6 +590,9 @@ class ListPengawasanController extends Controller
             return response()->json(['message' => 'Pengawas tidak ditemukan'], 404);
         }
 
+        $projectName = $this->getPengawasName($id) ?? 'Proyek';
+        $this->notifyListPengawasan($user, $id, 'update', "Mengubah status proyek {$projectName} menjadi {$data['status']}");
+
         return response()->json(['message' => 'Status berhasil diperbarui']);
     }
 
@@ -530,6 +619,10 @@ class ListPengawasanController extends Controller
         if (!$updated) {
             return response()->json(['message' => 'Proyek tidak ditemukan'], 404);
         }
+
+        $projectName = $this->getPengawasName($id) ?? 'Proyek';
+        $deadlineText = $data['deadline'] ?? '-';
+        $this->notifyListPengawasan($user, $id, 'update', "Memperbarui deadline proyek {$projectName}: {$deadlineText}");
 
         return response()->json([
             'message' => 'Deadline berhasil diperbarui',
@@ -573,6 +666,9 @@ class ListPengawasanController extends Controller
             'updated_at' => now(),
         ]);
 
+        $projectName = $pengawas->name ?? 'Proyek';
+        $this->notifyListPengawasan($user, $id, 'update', "Mengunggah bukti untuk proyek: {$projectName}");
+
         return response()->json([
             'message' => 'Bukti berhasil diunggah',
             'bukti' => [
@@ -614,6 +710,9 @@ class ListPengawasanController extends Controller
             'bukti_uploaded_at' => null,
             'updated_at' => now(),
         ]);
+
+        $projectName = $pengawas->name ?? 'Proyek';
+        $this->notifyListPengawasan($user, $id, 'update', "Menghapus bukti untuk proyek: {$projectName}");
 
         return response()->json(['message' => 'Bukti berhasil dihapus']);
     }

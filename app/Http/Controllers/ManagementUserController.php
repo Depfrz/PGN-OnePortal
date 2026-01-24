@@ -30,6 +30,7 @@ class ManagementUserController extends Controller
             $defaultLpPermissions = [
                 'tambah_proyek' => true,
                 'nama_proyek' => true,
+                'pengawas' => true,
                 'deadline' => true,
                 'status' => true,
                 'keterangan' => true,
@@ -197,6 +198,7 @@ class ManagementUserController extends Controller
                     'list_pengawasan' => array_merge([
                         'tambah_proyek' => false,
                         'nama_proyek' => false,
+                        'pengawas' => false,
                         'deadline' => false,
                         'status' => false,
                         'keterangan' => false,
