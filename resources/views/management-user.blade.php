@@ -509,9 +509,10 @@
                                 if ($item->name === 'Buku Saku') return 'Buku Saku';
                                 return $item->group;
                             });
+                            $groupedModules = $groupedModules->except(['Web Utama']);
 
                             // Define desired order
-                            $orderedGroups = ['Web Utama', 'Buku Saku', 'List Pengawasan'];
+                            $orderedGroups = ['Buku Saku', 'List Pengawasan'];
                             
                             // Get other groups that might exist (excluding Lainnya if empty/merged)
                             $otherGroups = $groupedModules->keys()
@@ -528,12 +529,6 @@
                                     'Pengecekan File' => 'Melakukan pengecekan dan approval dokumen.',
                                     'Riwayat Dokumen' => 'Melihat riwayat dokumen.',
                                     'Upload Dokumen' => 'Mengunggah dokumen baru.',
-                                ],
-                                'Web Utama' => [
-                                    'Integrasi Sistem' => 'Mengelola integrasi sistem.',
-                                    'Management User' => 'Mengelola pengguna dan hak akses.',
-                                    'Data History' => 'Melihat data riwayat sistem.',
-                                    'History' => 'Melihat riwayat aktivitas.',
                                 ],
                             ];
                         @endphp
@@ -584,7 +579,7 @@
                                     @endif
                                 </div>
                                 
-                                @if(in_array($groupName, ['Buku Saku', 'Web Utama']))
+                                @if(in_array($groupName, ['Buku Saku']))
                                     <div class="text-[11px] font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-300 mb-2">
                                         Hak Akses Detail
                                     </div>
