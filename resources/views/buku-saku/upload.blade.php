@@ -171,6 +171,9 @@
                 if (type === 'success') {
                     iconContainer.className = 'flex h-9 w-9 items-center justify-center rounded-xl bg-green-100 text-green-700';
                     iconContainer.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-5 w-5"><path fill-rule="evenodd" d="M16.704 4.294a.75.75 0 01.002 1.06l-8.25 8.25a.75.75 0 01-1.06 0l-3.75-3.75a.75.75 0 011.06-1.06l3.22 3.22 7.72-7.72a.75.75 0 011.058 0z" clip-rule="evenodd" /></svg>`;
+                } else if (type === 'info') {
+                    iconContainer.className = 'flex h-9 w-9 items-center justify-center rounded-xl bg-blue-100 text-blue-700';
+                    iconContainer.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" /></svg>`;
                 } else {
                     iconContainer.className = 'flex h-9 w-9 items-center justify-center rounded-xl bg-red-100 text-red-700';
                     iconContainer.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-5 w-5"><path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" /></svg>`;
@@ -182,6 +185,30 @@
                 setTimeout(() => {
                     toast.classList.add('translate-x-full', 'opacity-0', 'pointer-events-none');
                 }, 3000);
+            }
+
+            // Upload Progress UI
+            const uploadForm = document.getElementById('uploadForm');
+            if (uploadForm) {
+                uploadForm.addEventListener('submit', function() {
+                    const btn = this.querySelector('button[type="submit"]');
+                    
+                    // Disable button
+                    btn.disabled = true;
+                    btn.classList.add('opacity-75', 'cursor-not-allowed');
+                    
+                    // Add spinner and change text
+                    btn.innerHTML = `
+                        <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Sedang Mengupload...
+                    `;
+                    
+                    // Show Toast
+                    showToast('Sedang memproses upload, mohon tunggu...', 'info');
+                });
             }
 
             // Tag Management
