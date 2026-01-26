@@ -107,23 +107,48 @@ class BukuSakuController extends Controller
                     $keywords = [$query];
                 }
                 
-                $documents = BukuSakuDocument::approved()
+                // Fetch ALL potential matches first, then rank in PHP
+                // Doing complex ranking in SQL is harder across DB types (MySQL vs SQLite etc)
+                $potentialDocs = BukuSakuDocument::approved()
                     ->with('user')
                     ->where(function($q) use ($keywords, $query) {
-                        // 1. Exact phrase match (High priority if we could rank, but for SQL just include it)
+                        // 1. Exact phrase match
                         $q->where('title', 'like', "%{$query}%")
                           ->orWhere('description', 'like', "%{$query}%")
                           ->orWhere('tags', 'like', "%{$query}%");
                           
-                        // 2. Keyword match (Any word)
+                        // 2. Keyword match
                         foreach ($keywords as $word) {
                             $q->orWhere('title', 'like', "%{$word}%")
                               ->orWhere('description', 'like', "%{$word}%")
                               ->orWhere('tags', 'like', "%{$word}%");
                         }
                     })
-                    ->orderBy('created_at', 'desc')
                     ->get();
+                    
+                // Custom Ranking Logic
+                $documents = $potentialDocs->sortByDesc(function($doc) use ($keywords, $query) {
+                    $score = 0;
+                    $title = strtolower($doc->title ?? '');
+                    $desc = strtolower($doc->description ?? '');
+                    $tags = strtolower($doc->tags ?? '');
+                    $qLower = strtolower($query);
+                    
+                    // Priority 1: Exact Phrase Match (Highest Score)
+                    if (str_contains($title, $qLower)) $score += 50;
+                    if (str_contains($tags, $qLower)) $score += 40;
+                    if (str_contains($desc, $qLower)) $score += 30;
+                    
+                    // Priority 2: Keyword Matches (Count how many keywords appear)
+                    foreach ($keywords as $word) {
+                        $word = strtolower($word);
+                        if (str_contains($title, $word)) $score += 10;
+                        if (str_contains($tags, $word)) $score += 8;
+                        if (str_contains($desc, $word)) $score += 5;
+                    }
+                    
+                    return $score;
+                });
             }
 
             // Get Other Documents (Not in Search Results)
@@ -401,7 +426,12 @@ class BukuSakuController extends Controller
     {
         if (Storage::disk('public')->exists($document->file_path)) {
             $path = Storage::disk('public')->path($document->file_path);
-            return response()->file($path);
+            
+            // Force inline display for PDF to ensure it opens in browser
+            return response()->file($path, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'inline; filename="' . $document->title . '.pdf"'
+            ]);
         }
         return redirect()->back()->with('error', 'File tidak ditemukan.');
     }

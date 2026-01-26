@@ -14,7 +14,11 @@
                 <div class="border rounded-lg p-4 hover:shadow-md transition-shadow flex items-start justify-between bg-white gap-4">
                     <div class="flex items-start gap-4 flex-1 min-w-0">
                         <div class="flex-1 min-w-0">
-                            <h3 class="font-bold text-base text-gray-800 break-words mb-1">{{ $doc->title }}</h3>
+                            <h3 class="font-bold text-base text-gray-800 break-words mb-1">
+                                <a href="{{ route('buku-saku.preview', $doc->id) }}" target="_blank" rel="noopener noreferrer" class="hover:text-blue-600 hover:underline">
+                                    {{ $doc->title }}
+                                </a>
+                            </h3>
                             <p class="text-sm text-gray-500 mb-2 line-clamp-2">{{ $doc->description }}</p>
                             <div class="flex flex-wrap items-center gap-3 text-sm text-gray-400">
                                 <span class="uppercase bg-gray-100 px-2 py-0.5 rounded font-bold">{{ $doc->file_type }}</span>

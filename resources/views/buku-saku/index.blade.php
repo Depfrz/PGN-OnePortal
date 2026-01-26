@@ -68,7 +68,7 @@
                                 <div class="flex-1 min-w-0">
                                     <div class="flex justify-between items-start">
                                         <h3 class="font-bold text-base text-gray-800 break-words mb-1">
-                                            <a href="{{ route('buku-saku.show', $doc->id) }}" class="hover:text-blue-600 hover:underline">
+                                            <a href="{{ route('buku-saku.preview', $doc->id) }}" target="_blank" rel="noopener noreferrer" class="hover:text-blue-600 hover:underline">
                                                 {{ $doc->title }}
                                             </a>
                                         </h3>
@@ -117,22 +117,18 @@
                                                 $now = \Carbon\Carbon::now();
                                                 $diffInYears = $now->floatDiffInYears($doc->valid_until, false);
                                             @endphp
-                                            
-                                            @if($diffInYears < 0)
+                                            @if($diffInYears > 1)
+                                                <span class="text-green-600">Berlaku sampai: {{ \Carbon\Carbon::parse($doc->valid_until)->translatedFormat('d F Y') }}</span>
+                                            @elseif($diffInYears <= 1 && $diffInYears > 0)
                                                 <span class="text-red-600">
-                                                    Status: Expired ({{ $doc->valid_until->format('d M Y') }})
-                                                </span>
-                                            @elseif($diffInYears <= 1)
-                                                <span class="text-red-600">
-                                                    Status: <span class="countdown-timer tabular-nums" data-target="{{ $doc->valid_until->toIso8601String() }}">Hitung mundur...</span> ({{ $doc->valid_until->format('d M Y') }})
+                                                    Masa berlaku habis dalam: 
+                                                    {{ $now->diff($doc->valid_until)->format('%m Bulan %d Hari') }}
                                                 </span>
                                             @else
-                                                <span class="text-green-600">
-                                                    Status: Masih Berlaku ({{ $doc->valid_until->format('d M Y') }})
-                                                </span>
+                                                <span class="text-red-600">Sudah Kedaluwarsa</span>
                                             @endif
                                         @else
-                                            <span class="text-gray-500 font-normal">Status: -</span>
+                                            <span class="text-gray-400">Masa berlaku tidak diatur</span>
                                         @endif
                                     </div>
                                 </div>
@@ -143,4 +139,17 @@
             @endif
         </div>
     @endforeach
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.querySelector('input[name="q"]');
+            if (searchInput) {
+                searchInput.addEventListener('input', function(e) {
+                    if (this.value.trim() === '') {
+                        window.location.href = "{{ route('buku-saku.index') }}";
+                    }
+                });
+            }
+        });
+    </script>
 </x-buku-saku-layout>
