@@ -26,8 +26,8 @@
         editingDeadlineId: null,
         editDeadline: '',
         statusMenu: { open: false, x: 0, y: 0, item: null },
-                keteranganMenu: { open: false, x: 0, y: 0, item: null },
-        newPengawas: { nama: '', status: 'On Progress', deadline: '', keterangan: [], new_keterangan: '', pengawas_users: [] },
+        keteranganMenu: { open: false, x: 0, y: 0, item: null },
+        newPengawas: { nama: '', deskripsi: '', tanggal: '', status: 'On Progress', deadline: '', keterangan: [], new_keterangan: '', pengawas_users: [] },
         managePengawasUserModal: false,
         selectedPengawasUserItem: null,
         selectedPengawasUserAccount: null,
@@ -38,7 +38,7 @@
         users: {{ Js::from($users ?? []) }},
         openAdd() {
             if (!this.canWrite || !this.lpPerms.tambah_proyek) return;
-            this.newPengawas = { nama: '', status: 'On Progress', deadline: '', keterangan: [], new_keterangan: '', pengawas_users: [] };
+            this.newPengawas = { nama: '', deskripsi: '', tanggal: '', status: 'On Progress', deadline: '', keterangan: [], new_keterangan: '', pengawas_users: [] };
             this.addModal = true;
         },
         addNewKeteranganToForm() {
@@ -62,10 +62,14 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
                         'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
                     },
                     body: JSON.stringify({
                         nama: this.newPengawas.nama,
+                        deskripsi: this.newPengawas.deskripsi,
+                        tanggal: this.newPengawas.tanggal || null,
                         status: this.newPengawas.status,
                         deadline: this.newPengawas.deadline || null,
                         keterangan: this.newPengawas.keterangan,
@@ -878,7 +882,7 @@
                                             <input x-model="editPengawas.nama" type="text" class="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-sm font-semibold text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100" />
                                         </template>
                                         <template x-if="editingId !== item.id">
-                                            <a :href="'/list-pengawasan/' + item.id" class="text-gray-900 font-semibold text-base dark:text-white truncate hover:underline" x-text="item.nama"></a>
+                                            <a :href="'/list-pengawasan/' + item.id + '/kegiatan'" class="text-gray-900 font-semibold text-base dark:text-white truncate hover:underline" x-text="item.nama"></a>
                                         </template>
                                         <div class="mt-1 text-xs text-gray-500 dark:text-gray-400" x-text="item.tanggal"></div>
                                         <div class="mt-3">
@@ -1040,7 +1044,7 @@
                                 <tr class="text-left">
                                     <th class="pb-2 font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider pl-4">Nama Proyek</th>
                                     <th class="pb-2 font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[180px] pr-4">Pengawas</th>
-                                    <th class="pb-2 font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[130px] pr-4">Tanggal & Waktu</th>
+                                    <th class="pb-2 font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[130px] pr-4">Tanggal Mulai</th>
                                     <th class="pb-2 font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[140px] pr-4">Deadline</th>
                                     <th class="pb-2 font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[100px] pr-4">Status</th>
                                     <th class="pb-2 font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[200px] pr-4">Keterangan</th>
@@ -1056,7 +1060,7 @@
                                                 <input x-model="editPengawas.nama" type="text" class="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-sm font-semibold text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100" />
                                             </template>
                                             <template x-if="editingId !== item.id">
-                                                <a :href="'/list-pengawasan/' + item.id" class="text-gray-900 font-semibold text-base dark:text-white truncate hover:underline" x-text="item.nama"></a>
+                                                <a :href="'/list-pengawasan/' + item.id + '/kegiatan'" class="text-gray-900 font-semibold text-base dark:text-white truncate hover:underline" x-text="item.nama"></a>
                                             </template>
                                         </div>
 
@@ -1292,8 +1296,16 @@
             </div>
         </template>
 
-        <div x-show="addModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm transition-opacity" style="display: none;">
-            <div class="bg-white rounded-xl p-5 sm:p-6 w-[92vw] max-w-[560px] shadow-2xl transform transition-all dark:bg-gray-800 max-h-[85vh] overflow-y-auto">
+        <div x-show="addModal" 
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="translate-x-full"
+             x-transition:enter-end="translate-x-0"
+             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave-start="translate-x-0"
+             x-transition:leave-end="translate-x-full"
+             class="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-white dark:bg-gray-800 shadow-2xl overflow-y-auto border-l border-gray-200 dark:border-gray-700" 
+             style="display: none;">
+            <div class="p-6">
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-xl font-bold text-gray-800 dark:text-white">Tambah Proyek</h2>
                     <button @click="addModal = false" class="text-gray-400 hover:text-gray-600 transition-colors dark:hover:text-gray-200">
@@ -1308,6 +1320,10 @@
                         <input x-model="newPengawas.nama" type="text" placeholder="Masukkan nama proyek" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder:text-gray-500">
                     </div>
                     <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-200">Deskripsi</label>
+                        <textarea x-model="newPengawas.deskripsi" rows="3" placeholder="Masukkan deskripsi proyek" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder:text-gray-500"></textarea>
+                    </div>
+                    <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-200">Pengawas</label>
                         <div class="flex flex-wrap gap-2 mb-3">
                             <template x-if="newPengawas.pengawas_users.length === 0">
@@ -1319,7 +1335,7 @@
                                 </template>
                             </template>
                         </div>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-48 overflow-y-auto pr-1">
+                        <div class="grid grid-cols-1 gap-3 max-h-48 overflow-y-auto pr-1">
                             <template x-for="u in users" :key="`select-user-${u.id}`">
                                 <label class="flex items-center gap-3 p-3 border border-gray-200 rounded-lg shadow-sm cursor-pointer hover:bg-blue-50 hover:border-blue-200 transition-colors dark:border-gray-700 dark:hover:bg-blue-900/20 dark:hover:border-blue-800">
                                     <input type="checkbox" :value="u.id" x-model="newPengawas.pengawas_users" class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
@@ -1331,13 +1347,19 @@
                             </template>
                         </div>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-200">Deadline</label>
-                        <input x-model="newPengawas.deadline" type="date" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-200">Tanggal Mulai</label>
+                            <input x-model="newPengawas.tanggal" type="date" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-200">Deadline</label>
+                            <input x-model="newPengawas.deadline" type="date" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100">
+                        </div>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-200">Status</label>
-                        <div class="grid grid-cols-3 sm:inline-flex items-center rounded-lg border border-gray-200 bg-white p-1 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+                        <div class="grid grid-cols-3 sm:inline-flex items-center rounded-lg border border-gray-200 bg-white p-1 shadow-sm dark:border-gray-700 dark:bg-gray-900 w-full">
                             <button
                                 type="button"
                                 class="px-4 py-2 text-sm font-semibold rounded-md transition-colors w-full"
@@ -1360,7 +1382,7 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-200">Keterangan</label>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div class="grid grid-cols-1 gap-3">
                             <template x-for="opt in options" :key="opt">
                                 <label class="flex items-center p-3 border border-gray-200 rounded-lg shadow-sm cursor-pointer hover:bg-blue-50 hover:border-blue-200 transition-colors gap-3 dark:border-gray-700 dark:hover:bg-blue-900/20 dark:hover:border-blue-800">
                                     <input type="checkbox" :value="opt" x-model="newPengawas.keterangan" class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
@@ -1373,12 +1395,25 @@
                             <button @click="addNewKeteranganToForm()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">Tambah</button>
                         </div>
                     </div>
-                    <div class="flex justify-end space-x-3 mt-6">
+                    <div class="flex justify-end space-x-3 mt-8 pt-4 border-t border-gray-100 dark:border-gray-700">
                         <button @click="addModal = false" class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Batal</button>
                         <button @click="savePengawas()" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-md hover:shadow-lg transition-all">Simpan</button>
                     </div>
                 </div>
             </div>
+        </div>
+
+        <!-- Backdrop for Sidebar -->
+        <div x-show="addModal" 
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0"
+             @click="addModal = false"
+             class="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+             style="display: none;">
         </div>
 
         <div x-show="managePengawasUserModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm transition-opacity" style="display: none;">

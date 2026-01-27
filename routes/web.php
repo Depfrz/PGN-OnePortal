@@ -55,6 +55,40 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/history', [HistoryController::class, 'index'])->name('history');
 
     Route::get('/list-pengawasan', [ListPengawasanController::class, 'index'])->name('list-pengawasan.index');
+    
+    // Kegiatan Routes
+    Route::get('/list-pengawasan/{id}/kegiatan', [ListPengawasanController::class, 'kegiatanIndex'])
+        ->whereNumber('id')
+        ->name('list-pengawasan.kegiatan.index');
+    Route::post('/list-pengawasan/{id}/kegiatan', [ListPengawasanController::class, 'storeKegiatan'])
+        ->whereNumber('id')
+        ->name('list-pengawasan.kegiatan.store');
+    Route::get('/list-pengawasan/kegiatan/{activity}', [ListPengawasanController::class, 'showKegiatan'])
+        ->whereNumber('activity')
+        ->name('list-pengawasan.kegiatan.show');
+    Route::put('/list-pengawasan/kegiatan/{activity}', [ListPengawasanController::class, 'updateKegiatan'])
+        ->whereNumber('activity')
+        ->name('list-pengawasan.kegiatan.update');
+    Route::delete('/list-pengawasan/kegiatan/{activity}', [ListPengawasanController::class, 'destroyKegiatan'])
+        ->whereNumber('activity')
+        ->name('list-pengawasan.kegiatan.destroy');
+
+    // Kegiatan Helper Routes (for show-kegiatan.blade.php)
+    Route::patch('/list-pengawasan/kegiatan/{activity}/status', [ListPengawasanController::class, 'updateStatusKegiatan'])
+        ->whereNumber('activity');
+    Route::patch('/list-pengawasan/kegiatan/{activity}/deadline', [ListPengawasanController::class, 'updateDeadlineKegiatan'])
+        ->whereNumber('activity');
+    Route::patch('/list-pengawasan/kegiatan/{activity}/keterangan', [ListPengawasanController::class, 'updateKeteranganKegiatan'])
+        ->whereNumber('activity');
+    Route::post('/list-pengawasan/kegiatan/{activity}/bukti', [ListPengawasanController::class, 'uploadBuktiKegiatan'])
+        ->whereNumber('activity');
+    Route::delete('/list-pengawasan/kegiatan/{activity}/bukti', [ListPengawasanController::class, 'deleteBuktiKegiatan'])
+        ->whereNumber('activity');
+    Route::post('/list-pengawasan/kegiatan/{activity}/keterangan/bukti', [ListPengawasanController::class, 'uploadBuktiKeteranganKegiatan'])
+        ->whereNumber('activity');
+    Route::delete('/list-pengawasan/kegiatan/{activity}/keterangan/bukti', [ListPengawasanController::class, 'deleteBuktiKeteranganKegiatan'])
+        ->whereNumber('activity');
+
     Route::get('/list-pengawasan/{id}', [ListPengawasanController::class, 'show'])
         ->whereNumber('id')
         ->name('list-pengawasan.show');
