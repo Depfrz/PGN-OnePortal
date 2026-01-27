@@ -144,11 +144,12 @@
                     this.closeAdd();
                     this.showToast('Proyek berhasil ditambahkan');
                 } else {
-                    alert('Gagal menambah proyek');
+                    const d = await response.json().catch(() => ({}));
+                    this.showToast(d.message || 'Gagal menambah proyek');
                 }
             } catch (e) {
                 console.error(e);
-                alert('Terjadi kesalahan sistem');
+                this.showToast('Terjadi kesalahan sistem');
             }
         },
         async setStatus() {},

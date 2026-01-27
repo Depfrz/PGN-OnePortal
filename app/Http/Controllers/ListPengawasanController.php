@@ -45,10 +45,23 @@ class ListPengawasanController extends Controller
             return false;
         }
 
-        return ModuleAccess::where('user_id', $user->id)
+        $access = ModuleAccess::where('user_id', $user->id)
             ->where('module_id', $module->id)
-            ->where('can_write', true)
-            ->exists();
+            ->first();
+
+        if (!$access) {
+            return false;
+        }
+
+        if ($access->can_write) {
+            return true;
+        }
+
+        if ($access->can_read) {
+            return true;
+        }
+
+        return false;
     }
 
     private function canAccessPengawas($user, int $pengawasId): bool
@@ -105,24 +118,7 @@ class ListPengawasanController extends Controller
         }
 
         $module = Module::where('slug', 'list-pengawasan')->first();
-        if (!$module) {
-            return [
-                'tambah_proyek' => false,
-                'nama_proyek' => false,
-                'pengawas' => false,
-                'deadline' => false,
-                'status' => false,
-                'keterangan' => false,
-                'edit_keterangan' => false,
-                'bukti' => false,
-            ];
-        }
-
-        $access = ModuleAccess::where('user_id', $user->id)
-            ->where('module_id', $module->id)
-            ->first();
-
-        $base = [
+        $default = [
             'tambah_proyek' => false,
             'nama_proyek' => false,
             'pengawas' => false,
@@ -133,7 +129,30 @@ class ListPengawasanController extends Controller
             'bukti' => false,
         ];
 
-        if (!$access || !is_array($access->extra_permissions['list_pengawasan'] ?? null)) {
+        if (!$module) {
+            return $default;
+        }
+
+        $access = ModuleAccess::where('user_id', $user->id)
+            ->where('module_id', $module->id)
+            ->first();
+
+        if (!$access || !$access->can_read) {
+            return $default;
+        }
+
+        $base = [
+            'tambah_proyek' => true,
+            'nama_proyek' => true,
+            'pengawas' => true,
+            'deadline' => true,
+            'status' => true,
+            'keterangan' => true,
+            'edit_keterangan' => true,
+            'bukti' => true,
+        ];
+
+        if (!is_array($access->extra_permissions['list_pengawasan'] ?? null)) {
             return $base;
         }
 
