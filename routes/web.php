@@ -138,11 +138,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::match(['get', 'post'], '/notifications/mark-all-read', [App\Http\Controllers\NotificationController::class, 'markAllRead'])->name('notifications.mark-all-read');
 });
 
-// Temporary Cache Clear Route (Delete after use)
-Route::get('/clear-app-cache', function() {
-    \Illuminate\Support\Facades\Artisan::call('optimize:clear');
-    return 'Application cache cleared!';
-});
+
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
