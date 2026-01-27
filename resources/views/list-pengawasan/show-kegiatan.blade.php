@@ -35,17 +35,167 @@
         selectedBuktiItem: null,
         deleteKeteranganBuktiModal: false,
         selectedKeteranganBukti: { item: null, label: '' },
+        managePengawasUserModal: false,
+        selectedPengawasUserItem: null,
+        selectedPengawasUserAccount: null,
+        replacePengawasUserId: '',
+        addPengawasModal: false,
+        pengawasSearch: '',
+        selectedPengawasUserIds: [],
         showToast(message) {
             this.toast.message = message;
             this.toast.show = true;
             if (this.toast.timeoutId) clearTimeout(this.toast.timeoutId);
             this.toast.timeoutId = setTimeout(() => { this.toast.show = false; }, 2200);
         },
+        broadcastPengawasUpdate() {
+            const payload = {
+                pengawas_id: this.project?.pengawas_id,
+                pengawas_users: this.project?.pengawas_users || [],
+                at: Date.now()
+            };
+            try {
+                localStorage.setItem('list-pengawasan:pengawas-update', JSON.stringify(payload));
+            } catch (e) {}
+            try {
+                if ('BroadcastChannel' in window) {
+                    const ch = new BroadcastChannel('list-pengawasan');
+                    ch.postMessage({ type: 'pengawas-update', payload });
+                    ch.close();
+                }
+            } catch (e) {}
+        },
         statusMeta(status) {
             if (status === 'Selesai') return { label: 'Selesai', cls: 'bg-green-600 text-white' };
             if (status === 'Sedang Berjalan') return { label: 'Sedang Berjalan', cls: 'bg-blue-600 text-white' };
             if (status === 'Terlambat') return { label: 'Terlambat', cls: 'bg-red-600 text-white' };
             return { label: 'Belum Dimulai', cls: 'bg-gray-500 text-white' };
+        },
+        isLateKegiatan() {
+            const deadline = this.project?.deadline || null;
+            const status = this.project?.status || '';
+            if (!deadline) return false;
+            if (status === 'Selesai') return false;
+            const today = new Date().toISOString().slice(0, 10);
+            return deadline < today;
+        },
+        openManagePengawasUser(user) {
+            if (!this.canWrite || !this.lpPerms.pengawas) return;
+            this.selectedPengawasUserItem = this.project;
+            this.selectedPengawasUserAccount = user;
+            this.replacePengawasUserId = user?.id || '';
+            this.managePengawasUserModal = true;
+        },
+        closeManagePengawasUser() {
+            this.managePengawasUserModal = false;
+            this.selectedPengawasUserItem = null;
+            this.selectedPengawasUserAccount = null;
+            this.replacePengawasUserId = '';
+        },
+        async replacePengawasUser() {
+            if (!this.canWrite || !this.lpPerms.pengawas) return;
+            const item = this.selectedPengawasUserItem;
+            const account = this.selectedPengawasUserAccount;
+            const newUserId = parseInt(this.replacePengawasUserId, 10);
+            if (!item || !account || !newUserId) return;
+            try {
+                const response = await fetch(`/list-pengawasan/${this.project.pengawas_id}/pengawas-users`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
+                    },
+                    body: JSON.stringify({ old_user_id: account.id, new_user_id: newUserId })
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    this.project.pengawas_users = data.pengawas_users || [];
+                    this.closeManagePengawasUser();
+                    this.broadcastPengawasUpdate();
+                    this.showToast('Pengawas berhasil diperbarui');
+                } else {
+                    const d = await response.json().catch(() => ({}));
+                    this.showToast(d.message || 'Gagal memperbarui pengawas');
+                }
+            } catch (e) {
+                console.error(e);
+                this.showToast('Terjadi kesalahan sistem');
+            }
+        },
+        async removePengawasUser() {
+            if (!this.canWrite || !this.lpPerms.pengawas) return;
+            const item = this.selectedPengawasUserItem;
+            const account = this.selectedPengawasUserAccount;
+            if (!item || !account) return;
+            try {
+                const response = await fetch(`/list-pengawasan/${this.project.pengawas_id}/pengawas-users`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
+                    },
+                    body: JSON.stringify({ user_id: account.id })
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    this.project.pengawas_users = data.pengawas_users || [];
+                    this.closeManagePengawasUser();
+                    this.broadcastPengawasUpdate();
+                    this.showToast('Pengawas berhasil dihapus');
+                } else {
+                    const d = await response.json().catch(() => ({}));
+                    this.showToast(d.message || 'Gagal menghapus pengawas');
+                }
+            } catch (e) {
+                console.error(e);
+                this.showToast('Terjadi kesalahan sistem');
+            }
+        },
+        openAddPengawas() {
+            if (!this.canWrite || !this.lpPerms.pengawas) return;
+            this.selectedPengawasUserIds = [];
+            this.pengawasSearch = '';
+            this.addPengawasModal = true;
+        },
+        closeAddPengawas() {
+            this.addPengawasModal = false;
+            this.selectedPengawasUserIds = [];
+            this.pengawasSearch = '';
+        },
+        isAssignedPengawas(userId) {
+            return (this.project.pengawas_users || []).some(u => u.id === userId);
+        },
+        async addPengawasUsers() {
+            if (!this.canWrite || !this.lpPerms.pengawas) return;
+            const userIds = (this.selectedPengawasUserIds || [])
+                .map(v => parseInt(v, 10))
+                .filter(Boolean)
+                .filter(id => !this.isAssignedPengawas(id));
+            if (userIds.length === 0) return;
+
+            try {
+                const response = await fetch(`/list-pengawasan/${this.project.pengawas_id}/pengawas-users`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
+                    },
+                    body: JSON.stringify({ user_ids: userIds })
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    this.project.pengawas_users = data.pengawas_users || [];
+                    this.closeAddPengawas();
+                    this.broadcastPengawasUpdate();
+                    this.showToast('Pengawas berhasil ditambahkan');
+                } else {
+                    const d = await response.json().catch(() => ({}));
+                    this.showToast(d.message || 'Gagal menambah pengawas');
+                }
+            } catch (e) {
+                console.error(e);
+                this.showToast('Terjadi kesalahan sistem');
+            }
         },
         async saveProject() {
             if (!this.canWrite || !this.lpPerms.nama_proyek) return;
@@ -446,7 +596,7 @@
                     </div>
 
                     <div class="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5">
-                        <div class="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider mb-4">Status</div>
+                        <div class="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider mb-4">Status Kegiatan</div>
                         <div class="flex flex-wrap gap-2">
                              <button type="button" :disabled="!canWrite || !lpPerms.status" @click="setStatus('Belum Dimulai')" class="px-4 py-2 rounded-lg font-semibold transition-colors disabled:opacity-60" :class="project.status === 'Belum Dimulai' ? 'bg-gray-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600'">Belum Dimulai</button>
                             <button type="button" :disabled="!canWrite || !lpPerms.status" @click="setStatus('Sedang Berjalan')" class="px-4 py-2 rounded-lg font-semibold transition-colors disabled:opacity-60" :class="project.status === 'Sedang Berjalan' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600'">Sedang Berjalan</button>
@@ -455,6 +605,14 @@
                         </div>
                         <div class="mt-3">
                             <span class="inline-flex items-center px-4 py-1.5 rounded-full text-sm font-semibold" :class="statusMeta(project.status).cls" x-text="statusMeta(project.status).label"></span>
+                            <template x-if="isLateKegiatan()">
+                                <span class="ml-2 inline-flex items-center gap-2 rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-red-700 border border-red-100 dark:bg-red-900/20 dark:text-red-300 dark:border-red-900/30">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
+                                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.721-1.36 3.486 0l6.518 11.59c.75 1.334-.214 2.99-1.742 2.99H3.48c-1.528 0-2.492-1.656-1.742-2.99l6.52-11.59ZM10 8a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 10 8Zm0 7a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clip-rule="evenodd" />
+                                    </svg>
+                                    Terlambat
+                                </span>
+                            </template>
                         </div>
                     </div>
                 </div>
@@ -480,6 +638,31 @@
                     <template x-if="!project.bukti || !project.bukti.url">
                         <div class="text-sm text-gray-500 dark:text-gray-400">Belum ada bukti.</div>
                     </template>
+                </div>
+
+                <div class="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">Pengawas</div>
+                        <button type="button" x-show="canWrite && lpPerms.pengawas" @click="openAddPengawas()" class="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors">Tambah Pengawas</button>
+                    </div>
+                    <div class="rounded-lg bg-gray-50 border border-gray-200 px-4 py-2.5 dark:bg-gray-900 dark:border-gray-700">
+                        <template x-if="!project.pengawas_users || project.pengawas_users.length === 0">
+                            <div class="text-sm text-gray-500 dark:text-gray-400">-</div>
+                        </template>
+                        <template x-for="u in (project.pengawas_users || [])" :key="`pengawas-kegiatan-${project.id}-${u.id}`">
+                            <div class="flex items-center justify-between gap-3 py-1">
+                                <div class="min-w-0">
+                                    <div class="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate" x-text="u.name"></div>
+                                    <template x-if="canWrite && lpPerms.pengawas">
+                                        <button type="button" class="text-xs text-blue-600 hover:underline dark:text-blue-400 truncate" @click="openManagePengawasUser(u)" x-text="u.email"></button>
+                                    </template>
+                                    <template x-if="!canWrite || !lpPerms.pengawas">
+                                        <div class="text-xs text-gray-500 dark:text-gray-400 truncate" x-text="u.email"></div>
+                                    </template>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
                 </div>
 
                 <div class="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5">
@@ -671,6 +854,102 @@
                     <div class="flex justify-end gap-3">
                         <button @click="deleteKeteranganBuktiModal = false; selectedKeteranganBukti = { item: null, label: '' }" class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Batal</button>
                         <button @click="confirmDeleteKeteranganBukti()" class="px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium shadow-md hover:shadow-lg transition-all">Hapus</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div x-show="addPengawasModal" class="fixed inset-0 z-[80] flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm transition-opacity" style="display: none;">
+            <div class="bg-white rounded-xl p-5 sm:p-6 w-[92vw] max-w-[720px] shadow-2xl transform transition-all dark:bg-gray-800 max-h-[85vh] overflow-y-auto">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-bold text-gray-800 dark:text-white">Tambah Pengawas</h2>
+                    <button @click="closeAddPengawas()" class="text-gray-400 hover:text-gray-600 transition-colors dark:hover:text-gray-200">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="space-y-4">
+                    <div class="rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900">
+                        <div class="text-[11px] font-semibold tracking-wider text-gray-500 uppercase dark:text-gray-400">Kegiatan</div>
+                        <div class="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100" x-text="project?.nama || '-'"></div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-200">Cari Pengawas</label>
+                        <input x-model="pengawasSearch" type="text" placeholder="Ketik nama atau email" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder:text-gray-500">
+                    </div>
+
+                    <div class="rounded-lg border border-gray-200 dark:border-gray-700">
+                        <div class="p-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                            <div class="text-sm font-semibold text-gray-800 dark:text-gray-100">Pilih Pengawas</div>
+                            <div class="text-xs text-gray-500 dark:text-gray-400" x-text="`Dipilih: ${(selectedPengawasUserIds || []).length}`"></div>
+                        </div>
+                        <div class="max-h-72 overflow-y-auto p-3 space-y-2">
+                            <template x-for="u in (users || []).filter(u => {
+                                const q = (pengawasSearch || '').toLowerCase();
+                                const s = `${u.name || ''} ${u.email || ''}`.toLowerCase();
+                                return !q || s.includes(q);
+                            })" :key="`add-user-${u.id}`">
+                                <label class="flex items-center gap-3 p-3 border border-gray-200 rounded-lg shadow-sm cursor-pointer hover:bg-blue-50 hover:border-blue-200 transition-colors dark:border-gray-700 dark:hover:bg-blue-900/20 dark:hover:border-blue-800"
+                                       :class="isAssignedPengawas(u.id) ? 'opacity-60 cursor-not-allowed' : ''">
+                                    <input type="checkbox" :value="u.id" x-model="selectedPengawasUserIds" :disabled="isAssignedPengawas(u.id)" class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                                    <div class="min-w-0">
+                                        <div class="text-sm font-medium text-gray-700 dark:text-gray-200 truncate" x-text="u.name"></div>
+                                        <div class="text-xs text-gray-500 dark:text-gray-400 truncate" x-text="u.email"></div>
+                                    </div>
+                                    <template x-if="isAssignedPengawas(u.id)">
+                                        <span class="ml-auto inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600 border border-gray-200 dark:bg-gray-900 dark:text-gray-300 dark:border-gray-700">Sudah dipilih</span>
+                                    </template>
+                                </label>
+                            </template>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end gap-3 pt-2">
+                        <button @click="closeAddPengawas()" class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Batal</button>
+                        <button @click="addPengawasUsers()" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-md hover:shadow-lg transition-all">Tambah</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div x-show="managePengawasUserModal" class="fixed inset-0 z-[80] flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm transition-opacity" style="display: none;">
+            <div class="bg-white rounded-xl p-5 sm:p-6 w-[92vw] max-w-[520px] shadow-2xl transform transition-all dark:bg-gray-800">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-bold text-gray-800 dark:text-white">Kelola Pengawas</h2>
+                    <button @click="closeManagePengawasUser()" class="text-gray-400 hover:text-gray-600 transition-colors dark:hover:text-gray-200">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="space-y-4">
+                    <div class="rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900">
+                        <div class="text-[11px] font-semibold tracking-wider text-gray-500 uppercase dark:text-gray-400">Kegiatan</div>
+                        <div class="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100" x-text="project?.nama || '-'"></div>
+                    </div>
+                    <div class="rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900">
+                        <div class="text-[11px] font-semibold tracking-wider text-gray-500 uppercase dark:text-gray-400">Pengawas Saat Ini</div>
+                        <div class="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100" x-text="selectedPengawasUserAccount?.name || '-'"></div>
+                        <div class="mt-1 text-xs text-gray-500 dark:text-gray-400" x-text="selectedPengawasUserAccount?.email || '-'"></div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-200">Ganti Pengawas</label>
+                        <select x-model="replacePengawasUserId" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100">
+                            <option value="">Pilih pengawas baru</option>
+                            <template x-for="u in users" :key="`replace-user-${u.id}`">
+                                <option :value="u.id" x-text="`${u.name} - ${u.email}`"></option>
+                            </template>
+                        </select>
+                    </div>
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <button @click="removePengawasUser()" class="px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium transition-colors">Hapus Pengawas</button>
+                        <div class="flex items-center gap-3">
+                            <button @click="closeManagePengawasUser()" class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Batal</button>
+                            <button @click="replacePengawasUser()" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-md hover:shadow-lg transition-all">Simpan</button>
+                        </div>
                     </div>
                 </div>
             </div>

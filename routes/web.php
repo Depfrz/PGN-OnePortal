@@ -109,6 +109,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('/list-pengawasan/{id}/pengawas-users', [ListPengawasanController::class, 'replacePengawasUser'])
         ->whereNumber('id')
         ->name('list-pengawasan.replace-pengawas-user');
+    Route::post('/list-pengawasan/{id}/pengawas-users', [ListPengawasanController::class, 'addPengawasUsers'])
+        ->whereNumber('id')
+        ->name('list-pengawasan.add-pengawas-users');
     Route::delete('/list-pengawasan/{id}/pengawas-users', [ListPengawasanController::class, 'removePengawasUser'])
         ->whereNumber('id')
         ->name('list-pengawasan.remove-pengawas-user');
