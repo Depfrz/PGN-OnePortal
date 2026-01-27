@@ -866,10 +866,10 @@
             </div>
         </div>
 
-        <div x-show="addPengawasModal" class="fixed inset-0 z-[9999] flex items-start justify-center pt-24 pb-6 bg-black bg-opacity-50 backdrop-blur-sm transition-opacity" style="display: none;">
-            <div class="bg-white rounded-xl p-4 w-[92vw] max-w-[480px] shadow-2xl transform transition-all dark:bg-gray-800 max-h-[calc(100vh-160px)] overflow-hidden flex flex-col">
+        <div x-show="addPengawasModal" class="fixed inset-0 z-[80] flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm transition-opacity" style="display: none;">
+            <div class="bg-white rounded-xl p-5 sm:p-6 w-[92vw] max-w-[520px] shadow-2xl transform transition-all dark:bg-gray-800 max-h-[85vh] flex flex-col">
                 <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-lg font-bold text-gray-800 dark:text-white">Tambah Pengawas</h2>
+                    <h2 class="text-xl font-bold text-gray-800 dark:text-white">Tambah Pengawas</h2>
                     <button @click="closeAddPengawas()" class="text-gray-400 hover:text-gray-600 transition-colors dark:hover:text-gray-200">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -877,47 +877,73 @@
                     </button>
                 </div>
 
-                <div class="space-y-3 flex-1 overflow-hidden">
-                    <div class="rounded-lg border border-gray-200 bg-gray-50 p-2 dark:border-gray-700 dark:bg-gray-900">
-                        <div class="text-[11px] font-semibold tracking-wider text-gray-500 uppercase dark:text-gray-400">Kegiatan</div>
+                <div class="space-y-4 overflow-y-auto">
+                    <div class="rounded-lg border border-blue-100 bg-blue-50/70 p-3 dark:border-blue-900/30 dark:bg-blue-900/20">
+                        <div class="text-[11px] font-semibold tracking-wider text-blue-700 uppercase dark:text-blue-300">Kegiatan</div>
                         <div class="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100" x-text="project?.nama || '-'"></div>
                     </div>
 
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-200">Cari Pengawas</label>
-                        <input x-model="pengawasSearch" type="text" placeholder="Ketik nama atau email" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder:text-gray-500">
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                </svg>
+                            </div>
+                            <input x-model="pengawasSearch" type="text" placeholder="Cari nama atau email..." class="w-full pl-10 bg-white border border-gray-300 rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder:text-gray-500 shadow-sm">
+                        </div>
                     </div>
 
-                    <div class="rounded-lg border border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden flex-1">
-                        <div class="p-2 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-                            <div class="text-sm font-semibold text-gray-800 dark:text-gray-100">Pilih Pengawas</div>
-                            <div class="text-xs text-gray-500 dark:text-gray-400" x-text="`Dipilih: ${(selectedPengawasUserIds || []).length}`"></div>
+                    <div class="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col h-64 bg-white dark:bg-gray-900">
+                        <div class="px-3 py-2 bg-gray-50 border-b border-gray-200 dark:border-gray-700 dark:bg-gray-800/60 flex items-center justify-between">
+                            <div class="text-sm font-bold text-gray-700 dark:text-gray-200">Daftar Pengawas</div>
+                            <div class="px-2 py-0.5 bg-white rounded-md border border-gray-200 text-xs font-semibold text-gray-600 shadow-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300" x-text="`${(selectedPengawasUserIds || []).length} Dipilih`"></div>
                         </div>
-                        <div class="flex-1 overflow-y-auto p-2 space-y-2 overscroll-contain">
+                        <div class="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar bg-white dark:bg-gray-900">
                             <template x-for="u in (users || []).filter(u => {
                                 const q = (pengawasSearch || '').toLowerCase();
                                 const s = `${u.name || ''} ${u.email || ''}`.toLowerCase();
                                 return !q || s.includes(q);
                             })" :key="`add-user-${u.id}`">
-                                <label class="flex items-center gap-3 p-3 border border-gray-200 rounded-lg shadow-sm cursor-pointer hover:bg-blue-50 hover:border-blue-200 transition-colors dark:border-gray-700 dark:hover:bg-blue-900/20 dark:hover:border-blue-800"
-                                       :class="isAssignedPengawas(u.id) ? 'opacity-60 cursor-not-allowed' : ''">
-                                    <input type="checkbox" :value="u.id" x-model="selectedPengawasUserIds" :disabled="isAssignedPengawas(u.id)" class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                                    <div class="min-w-0">
-                                        <div class="text-sm font-medium text-gray-700 dark:text-gray-200 truncate" x-text="u.name"></div>
+                                <label class="group flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all border border-transparent hover:bg-blue-50 hover:border-blue-100 dark:hover:bg-blue-900/20 dark:hover:border-blue-800"
+                                       :class="isAssignedPengawas(u.id) ? 'opacity-50 grayscale cursor-not-allowed bg-gray-50 dark:bg-gray-800/50' : (selectedPengawasUserIds.includes(u.id.toString()) ? 'bg-blue-50 border-blue-200 dark:bg-blue-900/30 dark:border-blue-700' : '')">
+                                    <div class="relative flex items-center">
+                                        <input type="checkbox" :value="u.id" x-model="selectedPengawasUserIds" :disabled="isAssignedPengawas(u.id)" 
+                                               class="peer w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 disabled:text-gray-400">
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <div class="text-sm font-semibold text-gray-700 dark:text-gray-200 truncate group-hover:text-blue-700 dark:group-hover:text-blue-300" x-text="u.name"></div>
                                         <div class="text-xs text-gray-500 dark:text-gray-400 truncate" x-text="u.email"></div>
                                     </div>
                                     <template x-if="isAssignedPengawas(u.id)">
-                                        <span class="ml-auto inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600 border border-gray-200 dark:bg-gray-900 dark:text-gray-300 dark:border-gray-700">Sudah dipilih</span>
+                                        <span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-400">Terdaftar</span>
                                     </template>
                                 </label>
                             </template>
+                            
+                            <div x-show="(users || []).filter(u => {
+                                const q = (pengawasSearch || '').toLowerCase();
+                                const s = `${u.name || ''} ${u.email || ''}`.toLowerCase();
+                                return !q || s.includes(q);
+                            }).length === 0" class="flex flex-col items-center justify-center h-full py-8 text-center text-gray-400">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-2 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                </svg>
+                                <span class="text-sm">Tidak ada pengawas ditemukan</span>
+                            </div>
                         </div>
                     </div>
+                </div>
 
-                    <div class="flex justify-end gap-3 pt-2">
-                        <button @click="closeAddPengawas()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Batal</button>
-                        <button @click="addPengawasUsers()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-md hover:shadow-lg transition-all">Tambah</button>
-                    </div>
+                <div class="mt-4 flex justify-end gap-3">
+                    <button @click="closeAddPengawas()" class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Batal</button>
+                    <button @click="addPengawasUsers()" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-md hover:shadow-lg transition-all flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd" />
+                        </svg>
+                        <span>Tambahkan</span>
+                    </button>
                 </div>
             </div>
         </div>
