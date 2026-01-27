@@ -150,13 +150,29 @@
                 </a>
                 @endcan
 
+                <!-- List Pengawasan (Removed per request) -->
+
                 @php
-                    $isListPengawasanRoute = request()->routeIs('list-pengawasan.*') || request()->is('list-pengawasan*');
-                    $isListPengawasanDetail = request()->routeIs('list-pengawasan.show');
-                    $isListPengawasanIndex = request()->routeIs('list-pengawasan.index');
+                    $currentUrl = request()->fullUrl();
+                    $currentPath = request()->path();
+                    
+                    // Robust detection using multiple methods
+                    $isListPengawasanRoute = request()->routeIs('list-pengawasan.*') 
+                        || request()->is('list-pengawasan*') 
+                        || str_contains($currentUrl, 'list-pengawasan');
+                        
+                    $isListPengawasanDetail = request()->routeIs('list-pengawasan.show')
+                        || (preg_match('/list-pengawasan\/\d+\/?$/', $currentPath));
+
+                    $isListPengawasanIndex = request()->routeIs('list-pengawasan.index')
+                        || ($isListPengawasanRoute && !$isListPengawasanDetail && !str_contains($currentUrl, '/kegiatan'));
+
                     $isListPengawasanKegiatanDetail = request()->routeIs('list-pengawasan.kegiatan.show');
+                    
                     // Improved detection: Check for 'kegiatan' in the path to catch all variants
-                    $isListPengawasanKegiatanIndex = request()->routeIs('list-pengawasan.kegiatan.index') || request()->is('list-pengawasan/*/kegiatan') || str_contains(request()->path(), '/kegiatan');
+                    $isListPengawasanKegiatanIndex = request()->routeIs('list-pengawasan.kegiatan.index') 
+                        || request()->is('list-pengawasan/*/kegiatan') 
+                        || str_contains($currentUrl, '/kegiatan') && !$isListPengawasanKegiatanDetail;
                 @endphp
 
                 @if($isListPengawasanRoute)
@@ -165,7 +181,7 @@
                             x-data="{ 
                                 activeAction: null, 
                                 canUseProjectActions: {{ $isListPengawasanDetail ? 'true' : 'false' }},
-                                canUseKeteranganActions: {{ ($isListPengawasanDetail || $isListPengawasanKegiatanDetail) ? 'true' : 'false' }},
+                                canUseKeteranganActions: {{ ($isListPengawasanDetail || $isListPengawasanKegiatanDetail || $isListPengawasanKegiatanIndex) ? 'true' : 'false' }},
                                 canAddProjectFromSidebar: {{ $isListPengawasanIndex ? 'true' : 'false' }},
                                 canAddActivityFromSidebar: {{ $isListPengawasanKegiatanIndex ? 'true' : 'false' }},
                                 hasSelectedProject: false
@@ -180,7 +196,7 @@
                                 </span>
                             </div>
                             <div class="space-y-2">
-                                @if($isListPengawasanIndex || $isListPengawasanKegiatanIndex || (($canWrite ?? false) && ($lpPermissions['tambah_proyek'] ?? false)))
+                                @if($isListPengawasanRoute)
                                     <button 
                                         type="button"
                                         :disabled="!canUseProjectActions && !canAddProjectFromSidebar && !canAddActivityFromSidebar"
@@ -211,7 +227,7 @@
                                     </button>
                                     @endif
                                 @endif
-                                @if(($canWrite ?? false) && ($lpPermissions['keterangan'] ?? false))
+                                @if(($canWrite ?? false) || ($lpPermissions['keterangan'] ?? false) || $isListPengawasanDetail || $isListPengawasanKegiatanDetail || $isListPengawasanKegiatanIndex)
                                     <button 
                                         type="button"
                                         :disabled="!canUseKeteranganActions"
@@ -222,7 +238,7 @@
                                         Tambah Keterangan
                                     </button>
                                 @endif
-                                @if(($canWrite ?? false) && ($lpPermissions['edit_keterangan'] ?? false))
+                                @if(($canWrite ?? false) || ($lpPermissions['edit_keterangan'] ?? false) || $isListPengawasanDetail || $isListPengawasanKegiatanDetail || $isListPengawasanKegiatanIndex)
                                     <button 
                                         type="button"
                                         :disabled="!canUseKeteranganActions"
@@ -256,6 +272,8 @@
                         </div>
                     </div>
                 @endif
+                
+
             </nav>
         </aside>
 

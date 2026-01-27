@@ -13,10 +13,10 @@ class DashboardController extends Controller
         /** @var \App\Models\User $user */
         $user = Auth::user();
 
-        // Built-in features to exclude from the main dashboard grid as they are in the sidebar
+        // Features to exclude from main dashboard (e.g. sidebar-only features)
         $excludedModules = [
             'Dashboard', 'Integrasi Sistem', 'Management User', 'Data History', 'History',
-            // Exclude Buku Saku sub-modules from main dashboard
+            // Exclude Buku Saku sub-modules but NOT the main 'Buku Saku' module itself
             'Dokumen Favorit', 'Riwayat Dokumen', 'Pengecekan File', 'Upload Dokumen', 'Beranda'
         ];
 

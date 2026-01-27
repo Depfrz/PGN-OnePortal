@@ -36,6 +36,11 @@ class ListPengawasanController extends Controller
 
     private function canWriteForModule($user): bool
     {
+        // Fallback: Check roles directly from collection to bypass potential cache issues
+        if ($user->roles->whereIn('name', ['Admin', 'Supervisor'])->isNotEmpty()) {
+            return true;
+        }
+
         if ($user->hasRole(['Admin', 'Supervisor'])) {
             return true;
         }
@@ -104,6 +109,20 @@ class ListPengawasanController extends Controller
 
     private function getListPengawasanPermissions($user): array
     {
+        // Fallback: Check roles directly from collection to bypass potential cache issues
+        if ($user->roles->whereIn('name', ['Admin', 'Supervisor'])->isNotEmpty()) {
+            return [
+                'tambah_proyek' => true,
+                'nama_proyek' => true,
+                'pengawas' => true,
+                'deadline' => true,
+                'status' => true,
+                'keterangan' => true,
+                'edit_keterangan' => true,
+                'bukti' => true,
+            ];
+        }
+
         if ($user->hasRole(['Admin', 'Supervisor'])) {
             return [
                 'tambah_proyek' => true,

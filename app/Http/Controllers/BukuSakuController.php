@@ -16,138 +16,162 @@ class BukuSakuController extends Controller
     public function index(Request $request)
     {
         $query = $request->input('q');
-        $hasSearch = !empty($query);
+        $selectedTags = $request->input('selected_tags', []);
+        $hasSearch = !empty($query) || !empty($selectedTags);
         $documents = collect();
         $otherDocuments = collect();
 
         $resultsNotFound = false;
 
         if ($hasSearch) {
-            // 1. Prepare Data for NLP Engine
-            // Fetch all approved documents to feed into the search engine
-            // We fetch specific columns to minimize memory usage
-            $allDocs = BukuSakuDocument::approved()
-                ->select('id', 'title', 'description', 'tags')
-                ->get()
-                ->toArray();
+            // Only perform text search if query is present
+            if (!empty($query)) {
+                // 1. Prepare Data for NLP Engine
+                // Fetch all approved documents to feed into the search engine
+                // We fetch specific columns to minimize memory usage
+                $allDocs = BukuSakuDocument::approved()
+                    ->select('id', 'title', 'description', 'tags')
+                    ->get()
+                    ->toArray();
 
-            // Create a temporary JSON file to pass data to Python
-            // Using a unique filename to avoid race conditions
-            $tempFileName = 'search_data_' . time() . '_' . uniqid() . '.json';
-            $tempFilePath = storage_path('app/' . $tempFileName);
-            
-            // Ensure directory exists
-            if (!file_exists(dirname($tempFilePath))) {
-                mkdir(dirname($tempFilePath), 0755, true);
-            }
-            
-            file_put_contents($tempFilePath, json_encode($allDocs));
-
-            // 2. Execute Python Script
-            $scriptPath = base_path('python_engine/search_engine.py');
-            $pythonPath = env('PYTHON_PATH', 'python'); // Default to 'python'
-
-            $escapedQuery = escapeshellarg($query);
-            $escapedFilePath = escapeshellarg($tempFilePath);
-            
-            $output = null;
-            try {
-                if (function_exists('shell_exec')) {
-                     // Pass: script.py [json_file_path] [query]
-                     $command = "\"$pythonPath\" \"$scriptPath\" $escapedFilePath $escapedQuery";
-                     $output = shell_exec($command);
-                }
-            } catch (\Exception $e) {
-                // Ignore error, fallback to SQL
-            }
-            
-            // Cleanup temp file
-            if (file_exists($tempFilePath)) {
-                unlink($tempFilePath);
-            }
-            
-            $results = [];
-            $pythonSuccess = false;
-            
-            if ($output) {
-                $decoded = json_decode($output, true);
-                if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-                    $results = $decoded;
-                    $pythonSuccess = true;
-                }
-            }
-            
-            // Logic: Use Python results if available. 
-            // If Python failed (invalid JSON) OR Python returned 0 results, 
-            // we try the Smart SQL Fallback to be safe and ensure user sees something.
-            
-            $documents = collect();
-            
-            if ($pythonSuccess && !empty($results)) {
-                $ids = array_column($results, 'id');
-                if (!empty($ids)) {
-                    $documents = BukuSakuDocument::approved()
-                        ->with('user')
-                        ->whereIn('id', $ids)
-                        ->get()
-                        ->sortBy(function($model) use ($ids) {
-                            return array_search($model->id, $ids);
-                        });
-                }
-            }
-            
-            // If documents is empty (either Python failed, or Python found nothing), try Smart SQL
-            if ($documents->isEmpty()) {
-                // Smart SQL Fallback: Split keywords
-                $keywords = explode(' ', $query);
-                // Filter empty keywords
-                $keywords = array_filter($keywords, function($k) { return strlen($k) > 2; }); // Ignore very short words
+                // Create a temporary JSON file to pass data to Python
+                // Using a unique filename to avoid race conditions
+                $tempFileName = 'search_data_' . time() . '_' . uniqid() . '.json';
+                $tempFilePath = storage_path('app/' . $tempFileName);
                 
-                if (empty($keywords)) {
-                    $keywords = [$query];
+                // Ensure directory exists
+                if (!file_exists(dirname($tempFilePath))) {
+                    mkdir(dirname($tempFilePath), 0755, true);
                 }
                 
-                // Fetch ALL potential matches first, then rank in PHP
-                // Doing complex ranking in SQL is harder across DB types (MySQL vs SQLite etc)
-                $potentialDocs = BukuSakuDocument::approved()
-                    ->with('user')
-                    ->where(function($q) use ($keywords, $query) {
-                        // 1. Exact phrase match
-                        $q->where('title', 'like', "%{$query}%")
-                          ->orWhere('description', 'like', "%{$query}%")
-                          ->orWhere('tags', 'like', "%{$query}%");
-                          
-                        // 2. Keyword match
-                        foreach ($keywords as $word) {
-                            $q->orWhere('title', 'like', "%{$word}%")
-                              ->orWhere('description', 'like', "%{$word}%")
-                              ->orWhere('tags', 'like', "%{$word}%");
-                        }
-                    })
-                    ->get();
+                file_put_contents($tempFilePath, json_encode($allDocs));
+
+                // 2. Execute Python Script
+                $scriptPath = base_path('python_engine/search_engine.py');
+                $pythonPath = env('PYTHON_PATH', 'python'); // Default to 'python'
+
+                $escapedQuery = escapeshellarg($query);
+                $escapedFilePath = escapeshellarg($tempFilePath);
+                
+                $output = null;
+                try {
+                    if (function_exists('shell_exec')) {
+                        // Pass: script.py [json_file_path] [query]
+                        $command = "\"$pythonPath\" \"$scriptPath\" $escapedFilePath $escapedQuery";
+                        $output = shell_exec($command);
+                    }
+                } catch (\Exception $e) {
+                    // Ignore error, fallback to SQL
+                }
+                
+                // Cleanup temp file
+                if (file_exists($tempFilePath)) {
+                    unlink($tempFilePath);
+                }
+                
+                $results = [];
+                $pythonSuccess = false;
+                
+                if ($output) {
+                    $decoded = json_decode($output, true);
+                    if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                        $results = $decoded;
+                        $pythonSuccess = true;
+                    }
+                }
+                
+                // Logic: Use Python results if available. 
+                // If Python failed (invalid JSON) OR Python returned 0 results, 
+                // we try the Smart SQL Fallback to be safe and ensure user sees something.
+                
+                $documents = collect();
+                
+                if ($pythonSuccess && !empty($results)) {
+                    $ids = array_column($results, 'id');
+                    if (!empty($ids)) {
+                        $documents = BukuSakuDocument::approved()
+                            ->with('user')
+                            ->whereIn('id', $ids)
+                            ->get()
+                            ->sortBy(function($model) use ($ids) {
+                                return array_search($model->id, $ids);
+                            });
+                    }
+                }
+                
+                // If documents is empty (either Python failed, or Python found nothing), try Smart SQL
+                if ($documents->isEmpty()) {
+                    // Smart SQL Fallback: Split keywords
+                    $keywords = explode(' ', $query);
+                    // Filter empty keywords
+                    $keywords = array_filter($keywords, function($k) { return strlen($k) > 2; }); // Ignore very short words
                     
-                // Custom Ranking Logic
-                $documents = $potentialDocs->sortByDesc(function($doc) use ($keywords, $query) {
-                    $score = 0;
-                    $title = strtolower($doc->title ?? '');
-                    $desc = strtolower($doc->description ?? '');
-                    $tags = strtolower($doc->tags ?? '');
-                    $qLower = strtolower($query);
-                    
-                    // Priority 1: Exact Phrase Match (Highest Score)
-                    if (str_contains($title, $qLower)) $score += 50;
-                    if (str_contains($tags, $qLower)) $score += 40;
-                    if (str_contains($desc, $qLower)) $score += 30;
-                    
-                    // Priority 2: Keyword Matches (Count how many keywords appear)
-                    foreach ($keywords as $word) {
-                        $word = strtolower($word);
-                        if (str_contains($title, $word)) $score += 10;
-                        if (str_contains($tags, $word)) $score += 8;
-                        if (str_contains($desc, $word)) $score += 5;
+                    if (empty($keywords)) {
+                        $keywords = [$query];
                     }
                     
-                    return $score;
+                    // Fetch ALL potential matches first, then rank in PHP
+                    // Doing complex ranking in SQL is harder across DB types (MySQL vs SQLite etc)
+                    $potentialDocs = BukuSakuDocument::approved()
+                        ->with('user')
+                        ->where(function($q) use ($keywords, $query) {
+                            // 1. Exact phrase match
+                            $q->where('title', 'like', "%{$query}%")
+                            ->orWhere('description', 'like', "%{$query}%")
+                            ->orWhere('tags', 'like', "%{$query}%");
+                            
+                            // 2. Keyword match
+                            foreach ($keywords as $word) {
+                                $q->orWhere('title', 'like', "%{$word}%")
+                                ->orWhere('description', 'like', "%{$word}%")
+                                ->orWhere('tags', 'like', "%{$word}%");
+                            }
+                        })
+                        ->get();
+                        
+                    // Custom Ranking Logic
+                    $documents = $potentialDocs->sortByDesc(function($doc) use ($keywords, $query) {
+                        $score = 0;
+                        $title = strtolower($doc->title ?? '');
+                        $desc = strtolower($doc->description ?? '');
+                        $tags = strtolower($doc->tags ?? '');
+                        $qLower = strtolower($query);
+                        
+                        // Priority 1: Exact Phrase Match (Highest Score)
+                        if (str_contains($title, $qLower)) $score += 50;
+                        if (str_contains($tags, $qLower)) $score += 40;
+                        if (str_contains($desc, $qLower)) $score += 30;
+                        
+                        // Priority 2: Keyword Matches (Count how many keywords appear)
+                        foreach ($keywords as $word) {
+                            $word = strtolower($word);
+                            if (str_contains($title, $word)) $score += 10;
+                            if (str_contains($tags, $word)) $score += 8;
+                            if (str_contains($desc, $word)) $score += 5;
+                        }
+                        
+                        return $score;
+                    });
+                }
+            } else {
+                // If query is empty but tags are selected, start with all approved documents
+                $documents = BukuSakuDocument::approved()
+                    ->with('user')
+                    ->orderBy('created_at', 'desc')
+                    ->get();
+            }
+
+            // Apply Tag Filter if selected
+            if (!empty($selectedTags)) {
+                $documents = $documents->filter(function($doc) use ($selectedTags) {
+                    if (empty($doc->tags)) return false;
+                    $docTags = array_map('trim', explode(',', strtolower($doc->tags)));
+                    foreach ($selectedTags as $tag) {
+                        if (in_array(strtolower(trim($tag)), $docTags)) {
+                            return true;
+                        }
+                    }
+                    return false;
                 });
             }
 
@@ -167,7 +191,9 @@ class BukuSakuController extends Controller
                 ->get();
         }
 
-        return view('buku-saku.index', compact('documents', 'otherDocuments', 'hasSearch', 'query', 'resultsNotFound'));
+        $availableTags = BukuSakuTag::all();
+
+        return view('buku-saku.index', compact('documents', 'otherDocuments', 'hasSearch', 'query', 'resultsNotFound', 'availableTags'));
     }
 
     public function upload()

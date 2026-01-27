@@ -5,11 +5,24 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\IntegrasiSistemController;
 use App\Http\Controllers\ManagementUserController;
 use App\Http\Controllers\ListPengawasanController;
+use App\Http\Controllers\BukuSakuController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\HistoryController;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Auth;
 
 Route::get('/', function () {
     return view('welcome');
+});
+
+// --- HELPER UNTUK FIX HOSTING (Cache & Route Clear) ---
+Route::get('/fix-hosting', function() {
+    try {
+        Artisan::call('optimize:clear'); // Clears all caches (view, cache, route, config, compiled)
+        return "<h1>BERHASIL!</h1> <p>Cache hosting sudah dibersihkan.</p> <p>Silakan kembali ke <a href='/dashboard'>Dashboard</a> dan coba lagi.</p>";
+    } catch (\Exception $e) {
+        return "GAGAL: " . $e->getMessage();
+    }
 });
 
 Route::get('/dashboard', [DashboardController::class, 'index'])
@@ -53,6 +66,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     Route::get('/history', [HistoryController::class, 'index'])->name('history');
+
+    // Notifications
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index')->middleware(['auth', 'verified']);
+    Route::post('/notifications/mark-read/{id}', [NotificationController::class, 'markAsRead'])->name('notifications.mark-read')->middleware(['auth', 'verified']);
+    Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllRead'])->name('notifications.mark-all-read')->middleware(['auth', 'verified']);
 
     Route::get('/list-pengawasan', [ListPengawasanController::class, 'index'])->name('list-pengawasan.index');
     
@@ -106,74 +124,64 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('/list-pengawasan/{id}/deadline', [ListPengawasanController::class, 'updateDeadline'])
         ->whereNumber('id')
         ->name('list-pengawasan.update-deadline');
-    Route::patch('/list-pengawasan/{id}/pengawas-users', [ListPengawasanController::class, 'replacePengawasUser'])
-        ->whereNumber('id')
-        ->name('list-pengawasan.replace-pengawas-user');
-    Route::post('/list-pengawasan/{id}/pengawas-users', [ListPengawasanController::class, 'addPengawasUsers'])
-        ->whereNumber('id')
-        ->name('list-pengawasan.add-pengawas-users');
-    Route::delete('/list-pengawasan/{id}/pengawas-users', [ListPengawasanController::class, 'removePengawasUser'])
-        ->whereNumber('id')
-        ->name('list-pengawasan.remove-pengawas-user');
+
+    // Management Keterangan Options Routes
+    Route::post('/list-pengawasan/keterangan', [ListPengawasanController::class, 'storeOption'])
+        ->name('list-pengawasan.keterangan.store');
+    Route::patch('/list-pengawasan/keterangan/rename', [ListPengawasanController::class, 'renameOption'])
+        ->name('list-pengawasan.keterangan.rename');
+    Route::delete('/list-pengawasan/keterangan', [ListPengawasanController::class, 'destroyOption'])
+        ->name('list-pengawasan.keterangan.destroy');
+
+    // Bukti Routes (Project Level)
     Route::post('/list-pengawasan/{id}/bukti', [ListPengawasanController::class, 'uploadBukti'])
         ->whereNumber('id')
-        ->name('list-pengawasan.upload-bukti');
+        ->name('list-pengawasan.bukti.store');
     Route::delete('/list-pengawasan/{id}/bukti', [ListPengawasanController::class, 'deleteBukti'])
         ->whereNumber('id')
-        ->name('list-pengawasan.delete-bukti');
+        ->name('list-pengawasan.bukti.destroy');
+        
+    // Bukti Keterangan Routes (Project Level)
     Route::post('/list-pengawasan/{id}/keterangan/bukti', [ListPengawasanController::class, 'uploadBuktiKeterangan'])
         ->whereNumber('id')
-        ->name('list-pengawasan.upload-bukti-keterangan');
+        ->name('list-pengawasan.keterangan.bukti.store');
     Route::delete('/list-pengawasan/{id}/keterangan/bukti', [ListPengawasanController::class, 'deleteBuktiKeterangan'])
         ->whereNumber('id')
-        ->name('list-pengawasan.delete-bukti-keterangan');
+        ->name('list-pengawasan.keterangan.bukti.destroy');
+
     Route::delete('/list-pengawasan/{id}', [ListPengawasanController::class, 'destroy'])
         ->whereNumber('id')
         ->name('list-pengawasan.destroy');
-    Route::patch('/list-pengawasan/keterangan/rename', [ListPengawasanController::class, 'renameOption'])
-        ->name('list-pengawasan.keterangan.rename');
-    Route::delete('/list-pengawasan/keterangan', [ListPengawasanController::class, 'deleteOption'])
-        ->name('list-pengawasan.keterangan.delete');
-
-    // Notification Routes
-    Route::get('/notifications', [App\Http\Controllers\NotificationController::class, 'index'])->name('notifications.index');
-    Route::match(['get', 'post'], '/notifications/mark-read/{id}', [App\Http\Controllers\NotificationController::class, 'markAsRead'])->name('notifications.mark-read');
-    Route::match(['get', 'post'], '/notifications/mark-all-read', [App\Http\Controllers\NotificationController::class, 'markAllRead'])->name('notifications.mark-all-read');
-});
-
-
-
-Route::middleware('auth')->group(function () {
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     // Buku Saku Routes
     Route::prefix('buku-saku')->name('buku-saku.')->group(function () {
-        Route::get('/', [App\Http\Controllers\BukuSakuController::class, 'index'])->name('index');
-        Route::get('/upload', [App\Http\Controllers\BukuSakuController::class, 'upload'])->name('upload');
-        Route::post('/store', [App\Http\Controllers\BukuSakuController::class, 'store'])->name('store');
-        Route::delete('/{document}', [App\Http\Controllers\BukuSakuController::class, 'destroy'])->name('destroy');
-        Route::get('/favorites', [App\Http\Controllers\BukuSakuController::class, 'favorites'])->name('favorites');
-        Route::post('/{id}/favorite', [App\Http\Controllers\BukuSakuController::class, 'toggleFavorite'])->name('toggle-favorite');
-        Route::get('/history', [App\Http\Controllers\BukuSakuController::class, 'history'])->name('history');
-        Route::get('/download/{document}', [App\Http\Controllers\BukuSakuController::class, 'download'])->name('download');
-        Route::get('/preview/{document}', [App\Http\Controllers\BukuSakuController::class, 'preview'])->name('preview');
+        // Static Routes (Must be before wildcard routes)
+        Route::get('/', [BukuSakuController::class, 'index'])->name('index');
+        Route::get('/upload', [BukuSakuController::class, 'upload'])->name('upload');
+        Route::post('/', [BukuSakuController::class, 'store'])->name('store');
         
-        // Approval Workflow (Now Management)
-        Route::get('/approval', [App\Http\Controllers\BukuSakuController::class, 'approvalIndex'])->name('approval');
+        Route::get('/approval', [BukuSakuController::class, 'approvalIndex'])->name('approval');
+        Route::get('/favorites', [BukuSakuController::class, 'favorites'])->name('favorites');
+        Route::get('/history', [BukuSakuController::class, 'history'])->name('history');
+        Route::get('/hapus-dokumen', [BukuSakuController::class, 'hapusDokumenIndex'])->name('hapus-dokumen');
         
-        // Tags Management
-        Route::post('/tags', [App\Http\Controllers\BukuSakuController::class, 'storeTag'])->name('tags.store');
-        Route::delete('/tags/{id}', [App\Http\Controllers\BukuSakuController::class, 'destroyTag'])->name('tags.destroy');
-
-        // Edit/Update
-        Route::get('/{id}/edit', [App\Http\Controllers\BukuSakuController::class, 'edit'])->name('edit');
-        Route::put('/{id}', [App\Http\Controllers\BukuSakuController::class, 'update'])->name('update');
+        Route::post('/tags', [BukuSakuController::class, 'storeTag'])->name('tags.store');
+        Route::delete('/tags/{id}', [BukuSakuController::class, 'destroyTag'])->name('tags.destroy');
         
-        // Detail View (Must be last to avoid conflict with specific sub-routes)
-        Route::get('/{document}', [App\Http\Controllers\BukuSakuController::class, 'show'])->name('show');
+        // Dynamic Routes (Wildcard)
+        Route::get('/{document}', [BukuSakuController::class, 'show'])->name('show');
+        Route::get('/{document}/edit', [BukuSakuController::class, 'edit'])->name('edit');
+        Route::put('/{document}', [BukuSakuController::class, 'update'])->name('update');
+        Route::delete('/{document}', [BukuSakuController::class, 'destroy'])->name('destroy');
+        
+        Route::get('/{document}/download', [BukuSakuController::class, 'download'])->name('download');
+        Route::get('/{document}/preview', [BukuSakuController::class, 'preview'])->name('preview');
+        Route::post('/{document}/favorite', [BukuSakuController::class, 'toggleFavorite'])->name('toggle-favorite');
     });
+
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
 require __DIR__.'/auth.php';

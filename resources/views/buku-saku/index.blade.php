@@ -6,13 +6,68 @@
     <!-- Search Section -->
     <div class="bg-white p-4 sm:p-6 rounded-lg shadow-sm mb-6">
         <h3 class="text-lg font-semibold text-gray-800 mb-3">Pencarian Dokumen</h3>
-        <form action="{{ route('buku-saku.index') }}" method="GET" class="flex flex-col sm:flex-row gap-4">
-            <div class="flex-1">
-                <input type="text" name="q" value="{{ $query ?? '' }}" 
-                    class="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base" 
-                    placeholder="Cari dokumen relevan, misal: welder" required>
+        <form x-data="{ 
+            open: false, 
+            selected: {{ json_encode(request('selected_tags', [])) }},
+            query: '{{ $query ?? '' }}',
+            updateSearch(tag, checked) {
+                if (checked) {
+                    if (!this.query.toLowerCase().includes(tag.toLowerCase())) {
+                        this.query = this.query ? this.query + ' ' + tag : tag;
+                    }
+                } else {
+                    let regex = new RegExp('\\b' + tag + '\\b', 'gi');
+                    this.query = this.query.replace(regex, '').replace(/\s\s+/g, ' ').trim();
+                }
+            }
+        }" action="{{ route('buku-saku.index') }}" method="GET" class="flex flex-col md:flex-row gap-4">
+            <!-- Search Input -->
+            <div class="flex-1 relative">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+                    </svg>
+                </div>
+                <input type="text" name="q" x-model="query" 
+                    class="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base" 
+                    placeholder="Cari dokumen relevan, misal: welder">
             </div>
-            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-6 rounded-lg shadow transition-colors w-full sm:w-auto text-base">
+
+            <!-- Tags Dropdown Checklist -->
+            @if(isset($availableTags) && $availableTags->count() > 0)
+            <div class="relative min-w-[200px]">
+                <button @click="open = !open" @click.away="open = false" type="button" 
+                    class="w-full bg-white border border-gray-300 text-gray-700 py-2.5 px-4 rounded-lg shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 flex justify-between items-center">
+                    <span x-text="selected.length > 0 ? selected.length + ' Kategori Dipilih' : 'Filter Kategori'"></span>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 transition-transform duration-200" :class="{'rotate-180': open}" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+
+                <!-- Dropdown Content -->
+                <div x-show="open" 
+                     x-transition:enter="transition ease-out duration-100"
+                     x-transition:enter-start="transform opacity-0 scale-95"
+                     x-transition:enter-end="transform opacity-100 scale-100"
+                     x-transition:leave="transition ease-in duration-75"
+                     x-transition:leave-start="transform opacity-100 scale-100"
+                     x-transition:leave-end="transform opacity-0 scale-95"
+                     class="absolute z-10 mt-2 w-full md:w-64 bg-white rounded-xl shadow-lg border border-gray-100 max-h-60 overflow-y-auto">
+                    <div class="p-2 space-y-1">
+                        @foreach($availableTags as $tag)
+                            <label class="flex items-center px-3 py-2 rounded-lg hover:bg-blue-50 cursor-pointer transition-colors">
+                                <input type="checkbox" name="selected_tags[]" value="{{ $tag->name }}" 
+                                    x-model="selected" @change="updateSearch('{{ $tag->name }}', $event.target.checked)"
+                                    class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 h-4 w-4">
+                                <span class="ml-3 text-sm text-gray-700 font-medium">{{ $tag->name }}</span>
+                            </label>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+            @endif
+
+            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-6 rounded-lg shadow transition-colors w-full sm:w-auto text-base whitespace-nowrap">
                 Cari
             </button>
         </form>

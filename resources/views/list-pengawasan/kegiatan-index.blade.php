@@ -16,8 +16,18 @@
             window.addEventListener('list-pengawasan:action', (e) => {
                 if (e.detail.action === 'tambah_kegiatan') {
                     this.openAdd();
+                } else if (e.detail.action === 'tambah_keterangan') {
+                    this.openKeterangan();
+                } else if (e.detail.action === 'edit_keterangan') {
+                    this.openKeterangan();
                 }
             });
+        },
+
+        openKeterangan() {
+            if (!this.canWrite) return;
+            // Redirect to project detail to manage keterangan
+            window.location.href = `/list-pengawasan/${this.projectId}`;
         },
         
         showToast(message) {
