@@ -197,6 +197,43 @@ class ListPengawasanController extends Controller
         return DB::table('pengawas')->where('id', $pengawasId)->value('name');
     }
 
+    private function recalculateProjectStatus(int $pengawasId): void
+    {
+        $project = DB::table('pengawas')->where('id', $pengawasId)->first();
+        if (!$project) {
+            return;
+        }
+
+        $activities = PengawasKegiatan::where('pengawas_id', $pengawasId)->get(['status']);
+
+        $status = 'OFF';
+
+        if ($activities->isNotEmpty()) {
+            $hasRunning = $activities->contains(function ($a) {
+                return in_array($a->status, ['Sedang Berjalan', 'Terlambat'], true);
+            });
+
+            $allDone = $activities->every(function ($a) {
+                return $a->status === 'Selesai';
+            });
+
+            if ($hasRunning) {
+                $status = 'On Progress';
+            } elseif ($allDone) {
+                $status = 'Done';
+            } else {
+                $status = 'OFF';
+            }
+        }
+
+        DB::table('pengawas')
+            ->where('id', $pengawasId)
+            ->update([
+                'status' => $status,
+                'updated_at' => now(),
+            ]);
+    }
+
     public function show(int $id)
     {
         /** @var \App\Models\User $user */
@@ -311,6 +348,7 @@ class ListPengawasanController extends Controller
                 'pengawas.bukti_size',
                 'pengawas.bukti_uploaded_at'
             )
+            ->where('pengawas.status', 'Done')
             ->orderBy('pengawas.created_at', 'desc');
 
         if (!$user->hasRole(['Admin', 'Supervisor'])) {
@@ -323,9 +361,31 @@ class ListPengawasanController extends Controller
         }
 
         $pengawas = $pengawasQuery->get();
-        $assignedUsersMap = $this->getAssignedUsersMap($pengawas->pluck('id')->all());
+        $pengawasIds = $pengawas->pluck('id')->all();
+        $assignedUsersMap = $this->getAssignedUsersMap($pengawasIds);
 
-        $items = $pengawas->map(function ($p) use ($assignedUsersMap) {
+        $completedActivitiesMap = PengawasKegiatan::whereIn('pengawas_id', $pengawasIds)
+            ->where('status', 'Selesai')
+            ->orderBy('created_at', 'desc')
+            ->get(['id', 'pengawas_id', 'nama_kegiatan', 'deadline', 'tanggal_mulai'])
+            ->groupBy('pengawas_id')
+            ->map(function ($rows) {
+                return $rows->map(function ($a) {
+                    $deadline = $a->deadline ? Carbon::parse($a->deadline) : null;
+                    $tanggalMulai = $a->tanggal_mulai ? Carbon::parse($a->tanggal_mulai) : null;
+
+                    return [
+                        'id' => $a->id,
+                        'nama' => $a->nama_kegiatan,
+                        'tanggal' => $tanggalMulai ? $tanggalMulai->format('d-m-Y') : '-',
+                        'deadline' => $deadline ? $deadline->format('Y-m-d') : null,
+                        'deadline_display' => $deadline ? $deadline->format('d-m-Y') : '-',
+                    ];
+                })->values()->toArray();
+            })
+            ->toArray();
+
+        $items = $pengawas->map(function ($p) use ($assignedUsersMap, $completedActivitiesMap) {
             $keterangan = DB::table('pengawas_keterangan')
                 ->join('keterangan_options', 'keterangan_options.id', '=', 'pengawas_keterangan.keterangan_option_id')
                 ->where('pengawas_keterangan.pengawas_id', $p->id)
@@ -368,6 +428,7 @@ class ListPengawasanController extends Controller
                 'deadline_display' => $deadline ? $deadline->format('d-m-Y') : '-',
                 'status' => $this->normalizeStatus($p->status),
                 'keterangan' => $keterangan,
+                'kegiatan_selesai' => $completedActivitiesMap[$p->id] ?? [],
                 'pengawas_users' => $assignedUsersMap[$p->id] ?? [],
                 'bukti' => [
                     'path' => $p->bukti_path,
@@ -409,16 +470,13 @@ class ListPengawasanController extends Controller
             'nama' => ['required', 'string', 'max:255'],
             'deskripsi' => ['nullable', 'string'],
             'divisi' => ['nullable', 'string', 'max:255'],
-            'keterangan' => ['array'],
-            'keterangan.*' => ['string', 'max:255'],
             'tanggal' => ['nullable', 'date'],
             'deadline' => ['nullable', 'date'],
-            'status' => ['nullable', 'string', Rule::in(self::ALLOWED_STATUS)],
             'pengawas_users' => ['array'],
             'pengawas_users.*' => ['integer', 'exists:users,id'],
         ]);
 
-        $status = $data['status'] ?? 'On Progress';
+        $status = 'OFF';
 
         $pengawasId = DB::table('pengawas')->insertGetId([
             'name' => $data['nama'],
@@ -441,24 +499,6 @@ class ListPengawasanController extends Controller
         foreach ($userIds as $userId) {
             DB::table('pengawas_users')->updateOrInsert(
                 ['pengawas_id' => $pengawasId, 'user_id' => $userId],
-                ['created_at' => now(), 'updated_at' => now()]
-            );
-        }
-
-        $labels = $data['keterangan'] ?? [];
-        foreach ($labels as $label) {
-            $opt = DB::table('keterangan_options')->where('name', $label)->first();
-            if (!$opt) {
-                $optId = DB::table('keterangan_options')->insertGetId([
-                    'name' => $label,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-            } else {
-                $optId = $opt->id;
-            }
-            DB::table('pengawas_keterangan')->updateOrInsert(
-                ['pengawas_id' => $pengawasId, 'keterangan_option_id' => $optId],
                 ['created_at' => now(), 'updated_at' => now()]
             );
         }
@@ -610,6 +650,48 @@ class ListPengawasanController extends Controller
 
         return response()->json([
             'message' => 'Pengawas berhasil dihapus',
+            'pengawas_users' => $assignedUsersMap[$id] ?? [],
+        ]);
+    }
+
+    public function addPengawasUsers(Request $request, int $id)
+    {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+        if (!$this->canWriteForModule($user)) {
+            return response()->json(['message' => 'Unauthorized action.'], 403);
+        }
+        if (!$this->getListPengawasanPermissions($user)['pengawas']) {
+            return response()->json(['message' => 'Unauthorized action.'], 403);
+        }
+        if (!$this->canAccessPengawas($user, $id)) {
+            return response()->json(['message' => 'Unauthorized action.'], 403);
+        }
+
+        $data = $request->validate([
+            'user_ids' => ['required', 'array', 'min:1'],
+            'user_ids.*' => ['integer', 'exists:users,id'],
+        ]);
+
+        $userIds = collect($data['user_ids'])
+            ->filter()
+            ->unique()
+            ->values();
+
+        foreach ($userIds as $userId) {
+            DB::table('pengawas_users')->updateOrInsert(
+                ['pengawas_id' => $id, 'user_id' => $userId],
+                ['created_at' => now(), 'updated_at' => now()]
+            );
+        }
+
+        $projectName = $this->getPengawasName($id) ?? 'Proyek';
+        $this->notifyListPengawasan($user, $id, 'update', "Menambahkan pengawas ke proyek: {$projectName}");
+
+        $assignedUsersMap = $this->getAssignedUsersMap([$id]);
+
+        return response()->json([
+            'message' => 'Pengawas berhasil ditambahkan',
             'pengawas_users' => $assignedUsersMap[$id] ?? [],
         ]);
     }
@@ -1171,6 +1253,8 @@ class ListPengawasanController extends Controller
         $kegiatan->deskripsi = $data['deskripsi'] ?? null;
         $kegiatan->save();
 
+        $this->recalculateProjectStatus($id);
+
         $projectName = $this->getPengawasName($id) ?? 'Proyek';
         $this->notifyListPengawasan($user, $id, 'create', "Menambahkan kegiatan '{$kegiatan->nama_kegiatan}' pada proyek: {$projectName}");
 
@@ -1218,6 +1302,8 @@ class ListPengawasanController extends Controller
         $deadline = $act->deadline ? Carbon::parse($act->deadline) : null;
         $tanggal = $act->tanggal_mulai ? Carbon::parse($act->tanggal_mulai) : null;
 
+        $assignedUsersMap = $this->getAssignedUsersMap([$act->pengawas_id]);
+
         $item = [
             'id' => $act->id,
             'pengawas_id' => $act->pengawas_id,
@@ -1230,7 +1316,7 @@ class ListPengawasanController extends Controller
             'deadline_display' => $deadline ? $deadline->format('d-m-Y') : '-',
             'status' => $act->status,
             'keterangan' => $keterangan,
-            'pengawas_users' => [],
+            'pengawas_users' => $assignedUsersMap[$act->pengawas_id] ?? [],
             'bukti' => [
                 'path' => $act->bukti_path,
                 'name' => $act->bukti_original_name,
@@ -1242,7 +1328,7 @@ class ListPengawasanController extends Controller
         ];
 
         $options = DB::table('keterangan_options')->orderBy('name')->pluck('name')->toArray();
-        $users = []; // Not needed for activity
+        $users = User::orderBy('name')->get(['id', 'name', 'email'])->toArray();
         $canWrite = $this->canWriteForModule($user);
         $lpPermissions = $this->getListPengawasanPermissions($user);
 
@@ -1267,6 +1353,8 @@ class ListPengawasanController extends Controller
         $act->deskripsi = $data['deskripsi'] ?? null;
         $act->save();
 
+        $this->recalculateProjectStatus($act->pengawas_id);
+
         $projectName = $this->getPengawasName($act->pengawas_id) ?? 'Proyek';
         $this->notifyListPengawasan($user, $act->pengawas_id, 'update', "Memperbarui kegiatan '{$act->nama_kegiatan}' pada proyek: {$projectName}");
 
@@ -1286,6 +1374,8 @@ class ListPengawasanController extends Controller
         $pid = $act->pengawas_id;
         $act->delete();
 
+        $this->recalculateProjectStatus($pid);
+
         $projectName = $this->getPengawasName($pid) ?? 'Proyek';
         $this->notifyListPengawasan($user, $pid, 'delete', "Menghapus kegiatan '{$name}' pada proyek: {$projectName}");
 
@@ -1304,6 +1394,8 @@ class ListPengawasanController extends Controller
         $data = $request->validate(['status' => ['required', 'string']]);
         $act->status = $data['status'];
         $act->save();
+
+        $this->recalculateProjectStatus($act->pengawas_id);
 
         return response()->json(['message' => 'Status berhasil diperbarui']);
     }

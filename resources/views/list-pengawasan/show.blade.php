@@ -5,10 +5,6 @@
         init() {
             window.addEventListener('list-pengawasan:action', (e) => {
                 const action = e?.detail?.action || '';
-                if (action === 'tambah_proyek') {
-                    this.openAddProject();
-                    return;
-                }
                 if (action === 'tambah_keterangan') {
                     if (!this.canWrite || !this.lpPerms.keterangan) return;
                     this.activePanel = 'tambah_keterangan';
@@ -34,12 +30,6 @@
         renameOptionNewName: '',
         deleteOptionModal: false,
         deleteOptionName: '',
-        addProjectModal: false,
-        newPengawas: { nama: '', divisi: '', status: 'On Progress', deadline: '', keterangan: [], new_keterangan: '', pengawas_users: [] },
-        managePengawasUserModal: false,
-        selectedPengawasUserItem: null,
-        selectedPengawasUserAccount: null,
-        replacePengawasUserId: '',
         deleteBuktiModal: false,
         selectedBuktiItem: null,
         deleteKeteranganBuktiModal: false,
@@ -54,6 +44,14 @@
             if (status === 'OFF') return { label: 'Pending', cls: 'bg-red-600 text-white' };
             if (status === 'Done') return { label: 'Done', cls: 'bg-green-600 text-white' };
             return { label: 'On Progress', cls: 'bg-amber-600 text-white' };
+        },
+        isLateProject() {
+            const deadline = this.project?.deadline || null;
+            const status = this.project?.status || '';
+            if (!deadline) return false;
+            if (status === 'Done') return false;
+            const today = new Date().toISOString().slice(0, 10);
+            return deadline < today;
         },
         async saveProject() {
             if (!this.canWrite || !this.lpPerms.nama_proyek) return;
@@ -83,32 +81,6 @@
                     this.showToast(d.message || 'Gagal memperbarui detail kegiatan');
                 }
             } catch (e) {
-                console.error(e);
-                this.showToast('Terjadi kesalahan sistem');
-            }
-        },
-        async setStatus(status) {
-            if (!this.canWrite || !this.lpPerms.status) return;
-            const previous = this.project.status;
-            this.project.status = status;
-            try {
-                const response = await fetch(`/list-pengawasan/${this.project.id}/status`, {
-                    method: 'PATCH',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
-                    },
-                    body: JSON.stringify({ status })
-                });
-                if (!response.ok) {
-                    this.project.status = previous;
-                    const d = await response.json().catch(() => ({}));
-                    this.showToast(d.message || 'Gagal memperbarui status');
-                } else {
-                    this.showToast('Status berhasil diperbarui');
-                }
-            } catch (e) {
-                this.project.status = previous;
                 console.error(e);
                 this.showToast('Terjadi kesalahan sistem');
             }
@@ -264,120 +236,6 @@
             } catch (e) {
                 console.error(e);
                 this.deleteOptionModal = false;
-                this.showToast('Terjadi kesalahan sistem');
-            }
-        },
-        openAddProject() {
-            if (!this.canWrite || !this.lpPerms.tambah_proyek) return;
-            this.newPengawas = { nama: '', divisi: '', status: 'On Progress', deadline: '', keterangan: [], new_keterangan: '', pengawas_users: [] };
-            this.addProjectModal = true;
-        },
-        addNewKeteranganToForm() {
-            if (!this.canWrite || !this.lpPerms.edit_keterangan) return;
-            const label = this.newPengawas.new_keterangan?.trim();
-            if (!label) return;
-            if (!this.options.includes(label)) this.options.push(label);
-            if (!this.newPengawas.keterangan.includes(label)) this.newPengawas.keterangan.push(label);
-            this.newPengawas.new_keterangan = '';
-        },
-        async savePengawas() {
-            if (!this.canWrite || !this.lpPerms.tambah_proyek) return;
-            try {
-                const response = await fetch('/list-pengawasan', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
-                    },
-                    body: JSON.stringify({
-                        nama: this.newPengawas.nama,
-                        divisi: this.newPengawas.divisi || null,
-                        status: this.newPengawas.status,
-                        deadline: this.newPengawas.deadline || null,
-                        keterangan: this.newPengawas.keterangan,
-                        pengawas_users: this.newPengawas.pengawas_users
-                    })
-                });
-                if (response.ok) {
-                    const data = await response.json();
-                    this.addProjectModal = false;
-                    window.location.href = `/list-pengawasan/${data.id}`;
-                } else {
-                    const d = await response.json().catch(() => ({}));
-                    this.showToast(d.message || 'Gagal menambah proyek');
-                }
-            } catch (e) {
-                console.error(e);
-                this.showToast('Terjadi kesalahan sistem');
-            }
-        },
-        openManagePengawasUser(user) {
-            if (!this.canWrite || !this.lpPerms.pengawas) return;
-            this.selectedPengawasUserItem = this.project;
-            this.selectedPengawasUserAccount = user;
-            this.replacePengawasUserId = user?.id || '';
-            this.managePengawasUserModal = true;
-        },
-        closeManagePengawasUser() {
-            this.managePengawasUserModal = false;
-            this.selectedPengawasUserItem = null;
-            this.selectedPengawasUserAccount = null;
-            this.replacePengawasUserId = '';
-        },
-        async replacePengawasUser() {
-            if (!this.canWrite || !this.lpPerms.pengawas) return;
-            const item = this.selectedPengawasUserItem;
-            const account = this.selectedPengawasUserAccount;
-            const newUserId = parseInt(this.replacePengawasUserId, 10);
-            if (!item || !account || !newUserId) return;
-            try {
-                const response = await fetch(`/list-pengawasan/${item.id}/pengawas-users`, {
-                    method: 'PATCH',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
-                    },
-                    body: JSON.stringify({ old_user_id: account.id, new_user_id: newUserId })
-                });
-                if (response.ok) {
-                    const data = await response.json();
-                    this.project.pengawas_users = data.pengawas_users || [];
-                    this.closeManagePengawasUser();
-                    this.showToast('Pengawas berhasil diperbarui');
-                } else {
-                    const d = await response.json().catch(() => ({}));
-                    this.showToast(d.message || 'Gagal memperbarui pengawas');
-                }
-            } catch (e) {
-                console.error(e);
-                this.showToast('Terjadi kesalahan sistem');
-            }
-        },
-        async removePengawasUser() {
-            if (!this.canWrite || !this.lpPerms.pengawas) return;
-            const item = this.selectedPengawasUserItem;
-            const account = this.selectedPengawasUserAccount;
-            if (!item || !account) return;
-            try {
-                const response = await fetch(`/list-pengawasan/${item.id}/pengawas-users`, {
-                    method: 'DELETE',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
-                    },
-                    body: JSON.stringify({ user_id: account.id })
-                });
-                if (response.ok) {
-                    const data = await response.json();
-                    this.project.pengawas_users = data.pengawas_users || [];
-                    this.closeManagePengawasUser();
-                    this.showToast('Pengawas berhasil dihapus');
-                } else {
-                    const d = await response.json().catch(() => ({}));
-                    this.showToast(d.message || 'Gagal menghapus pengawas');
-                }
-            } catch (e) {
-                console.error(e);
                 this.showToast('Terjadi kesalahan sistem');
             }
         },
@@ -549,12 +407,7 @@
                                     <div class="flex items-center justify-between gap-3 py-1">
                                         <div class="min-w-0">
                                             <div class="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate" x-text="u.name"></div>
-                                            <template x-if="canWrite && lpPerms.pengawas">
-                                                <button type="button" class="text-xs text-blue-600 hover:underline dark:text-blue-400 truncate" @click="openManagePengawasUser(u)" x-text="u.email"></button>
-                                            </template>
-                                            <template x-if="!canWrite || !lpPerms.pengawas">
-                                                <div class="text-xs text-gray-500 dark:text-gray-400 truncate" x-text="u.email"></div>
-                                            </template>
+                                            <div class="text-xs text-gray-500 dark:text-gray-400 truncate" x-text="u.email"></div>
                                         </div>
                                     </div>
                                 </template>
@@ -574,14 +427,20 @@
                     </div>
 
                     <div class="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5">
-                        <div class="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider mb-4">Status</div>
-                        <div class="flex flex-wrap gap-2">
-                            <button type="button" :disabled="!canWrite || !lpPerms.status" @click="setStatus('OFF')" class="px-4 py-2 rounded-lg font-semibold transition-colors disabled:opacity-60" :class="project.status === 'OFF' ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600'">Pending</button>
-                            <button type="button" :disabled="!canWrite || !lpPerms.status" @click="setStatus('On Progress')" class="px-4 py-2 rounded-lg font-semibold transition-colors disabled:opacity-60" :class="project.status === 'On Progress' ? 'bg-amber-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600'">On Progress</button>
-                            <button type="button" :disabled="!canWrite || !lpPerms.status" @click="setStatus('Done')" class="px-4 py-2 rounded-lg font-semibold transition-colors disabled:opacity-60" :class="project.status === 'Done' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600'">Done</button>
-                        </div>
-                        <div class="mt-3">
-                            <span class="inline-flex items-center px-4 py-1.5 rounded-full text-sm font-semibold" :class="statusMeta(project.status).cls" x-text="statusMeta(project.status).label"></span>
+                        <div class="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider mb-3">Status Proyek</div>
+                        <div class="flex items-center justify-between gap-3">
+                            <div class="flex items-center gap-2">
+                                <span class="inline-flex items-center px-4 py-1.5 rounded-full text-sm font-semibold" :class="statusMeta(project.status).cls" x-text="statusMeta(project.status).label"></span>
+                                <template x-if="isLateProject()">
+                                    <span class="inline-flex items-center gap-2 rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-red-700 border border-red-100 dark:bg-red-900/20 dark:text-red-300 dark:border-red-900/30">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
+                                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.721-1.36 3.486 0l6.518 11.59c.75 1.334-.214 2.99-1.742 2.99H3.48c-1.528 0-2.492-1.656-1.742-2.99l6.52-11.59ZM10 8a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 10 8Zm0 7a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clip-rule="evenodd" />
+                                        </svg>
+                                        Terlambat
+                                    </span>
+                                </template>
+                            </div>
+                            <span class="text-xs text-gray-500 dark:text-gray-400">Ditentukan otomatis dari status kegiatan</span>
                         </div>
                     </div>
                 </div>
@@ -716,108 +575,6 @@
                             </div>
                         </div>
                     </template>
-                </div>
-            </div>
-        </div>
-
-        <div x-show="addProjectModal" class="fixed inset-0 z-[70] flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm transition-opacity" style="display: none;">
-            <div class="bg-white rounded-xl p-5 sm:p-6 w-[92vw] max-w-[640px] shadow-2xl transform transition-all dark:bg-gray-800 max-h-[85vh] overflow-y-auto">
-                <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-xl font-bold text-gray-800 dark:text-white">Tambah Proyek</h2>
-                    <button @click="addProjectModal = false" class="text-gray-400 hover:text-gray-600 transition-colors dark:hover:text-gray-200">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </button>
-                </div>
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-200">Nama Proyek</label>
-                        <input x-model="newPengawas.nama" type="text" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder:text-gray-500">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-200">Divisi</label>
-                        <input x-model="newPengawas.divisi" type="text" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder:text-gray-500">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-200">Pengawas</label>
-                        <select multiple x-model="newPengawas.pengawas_users" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100">
-                            <template x-for="u in users" :key="`new-pengawas-${u.id}`">
-                                <option :value="u.id" x-text="`${u.name} - ${u.email}`"></option>
-                            </template>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-200">Deadline</label>
-                        <input x-model="newPengawas.deadline" type="date" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-200">Status</label>
-                        <div class="grid grid-cols-3 gap-2 bg-gray-50 border border-gray-200 rounded-lg p-2 dark:bg-gray-900 dark:border-gray-700">
-                            <button type="button" class="px-4 py-2 text-sm font-semibold rounded-md transition-colors w-full" :class="newPengawas.status === 'OFF' ? 'bg-red-600 text-white' : 'text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800'" @click="newPengawas.status = 'OFF'">Pending</button>
-                            <button type="button" class="px-4 py-2 text-sm font-semibold rounded-md transition-colors w-full" :class="newPengawas.status === 'On Progress' ? 'bg-amber-600 text-white' : 'text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800'" @click="newPengawas.status = 'On Progress'">On Progress</button>
-                            <button type="button" class="px-4 py-2 text-sm font-semibold rounded-md transition-colors w-full" :class="newPengawas.status === 'Done' ? 'bg-green-600 text-white' : 'text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800'" @click="newPengawas.status = 'Done'">Done</button>
-                        </div>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-200">Keterangan</label>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <template x-for="opt in options" :key="`new-opt-${opt}`">
-                                <label class="flex items-center p-3 border border-gray-200 rounded-lg shadow-sm cursor-pointer hover:bg-blue-50 hover:border-blue-200 transition-colors gap-3 dark:border-gray-700 dark:hover:bg-blue-900/20 dark:hover:border-blue-800">
-                                    <input type="checkbox" :value="opt" x-model="newPengawas.keterangan" class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                                    <span class="text-sm font-medium text-gray-700 dark:text-gray-200" x-text="opt"></span>
-                                </label>
-                            </template>
-                        </div>
-                        <div class="flex items-center gap-2 mt-3" x-show="canWrite && lpPerms.edit_keterangan">
-                            <input x-model="newPengawas.new_keterangan" type="text" placeholder="Tambah keterangan baru" class="flex-1 bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder:text-gray-500">
-                            <button type="button" @click="addNewKeteranganToForm()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold">Tambah</button>
-                        </div>
-                    </div>
-                    <div class="flex justify-end space-x-3 mt-6">
-                        <button @click="addProjectModal = false" class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Batal</button>
-                        <button @click="savePengawas()" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-md hover:shadow-lg transition-all">Simpan</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div x-show="managePengawasUserModal" class="fixed inset-0 z-[70] flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm transition-opacity" style="display: none;">
-            <div class="bg-white rounded-xl p-5 sm:p-6 w-[92vw] max-w-[520px] shadow-2xl transform transition-all dark:bg-gray-800 max-h-[85vh] overflow-y-auto">
-                <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-xl font-bold text-gray-800 dark:text-white">Kelola Pengawas</h2>
-                    <button @click="closeManagePengawasUser()" class="text-gray-400 hover:text-gray-600 transition-colors dark:hover:text-gray-200">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </button>
-                </div>
-                <div class="space-y-4">
-                    <div class="rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900">
-                        <div class="text-[11px] font-semibold tracking-wider text-gray-500 uppercase dark:text-gray-400">Proyek</div>
-                        <div class="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100" x-text="project?.nama || '-'"></div>
-                    </div>
-                    <div class="rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900">
-                        <div class="text-[11px] font-semibold tracking-wider text-gray-500 uppercase dark:text-gray-400">Pengawas Saat Ini</div>
-                        <div class="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100" x-text="selectedPengawasUserAccount?.name || '-'"></div>
-                        <div class="mt-1 text-xs text-gray-500 dark:text-gray-400" x-text="selectedPengawasUserAccount?.email || '-'"></div>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-200">Ganti Pengawas</label>
-                        <select x-model="replacePengawasUserId" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100">
-                            <option value="">Pilih pengawas baru</option>
-                            <template x-for="u in users" :key="`replace-user-${u.id}`">
-                                <option :value="u.id" x-text="`${u.name} - ${u.email}`"></option>
-                            </template>
-                        </select>
-                    </div>
-                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                        <button @click="removePengawasUser()" class="px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium transition-colors">Hapus Pengawas</button>
-                        <div class="flex items-center gap-3">
-                            <button @click="closeManagePengawasUser()" class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Batal</button>
-                            <button @click="replacePengawasUser()" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-md hover:shadow-lg transition-all">Simpan</button>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
