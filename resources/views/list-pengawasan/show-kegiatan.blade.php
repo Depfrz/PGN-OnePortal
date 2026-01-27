@@ -866,10 +866,10 @@
             </div>
         </div>
 
-        <div x-show="addPengawasModal" class="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm transition-opacity" style="display: none;">
-            <div class="bg-white rounded-xl p-6 w-[92vw] max-w-[520px] shadow-2xl transform transition-all dark:bg-gray-800 max-h-[80vh] overflow-y-auto">
-                <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-xl font-bold text-gray-800 dark:text-white">Tambah Pengawas</h2>
+        <div x-show="addPengawasModal" class="fixed inset-0 z-[9999] flex items-start justify-center pt-24 pb-6 bg-black bg-opacity-50 backdrop-blur-sm transition-opacity" style="display: none;">
+            <div class="bg-white rounded-xl p-4 w-[92vw] max-w-[480px] shadow-2xl transform transition-all dark:bg-gray-800 max-h-[calc(100vh-160px)] overflow-hidden flex flex-col">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-bold text-gray-800 dark:text-white">Tambah Pengawas</h2>
                     <button @click="closeAddPengawas()" class="text-gray-400 hover:text-gray-600 transition-colors dark:hover:text-gray-200">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -877,8 +877,8 @@
                     </button>
                 </div>
 
-                <div class="space-y-4">
-                    <div class="rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900">
+                <div class="space-y-3 flex-1 overflow-hidden">
+                    <div class="rounded-lg border border-gray-200 bg-gray-50 p-2 dark:border-gray-700 dark:bg-gray-900">
                         <div class="text-[11px] font-semibold tracking-wider text-gray-500 uppercase dark:text-gray-400">Kegiatan</div>
                         <div class="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100" x-text="project?.nama || '-'"></div>
                     </div>
@@ -888,12 +888,12 @@
                         <input x-model="pengawasSearch" type="text" placeholder="Ketik nama atau email" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder:text-gray-500">
                     </div>
 
-                    <div class="rounded-lg border border-gray-200 dark:border-gray-700">
-                        <div class="p-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                    <div class="rounded-lg border border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden flex-1">
+                        <div class="p-2 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
                             <div class="text-sm font-semibold text-gray-800 dark:text-gray-100">Pilih Pengawas</div>
                             <div class="text-xs text-gray-500 dark:text-gray-400" x-text="`Dipilih: ${(selectedPengawasUserIds || []).length}`"></div>
                         </div>
-                        <div class="max-h-72 overflow-y-auto p-3 space-y-2">
+                        <div class="flex-1 overflow-y-auto p-2 space-y-2 overscroll-contain">
                             <template x-for="u in (users || []).filter(u => {
                                 const q = (pengawasSearch || '').toLowerCase();
                                 const s = `${u.name || ''} ${u.email || ''}`.toLowerCase();
@@ -915,8 +915,8 @@
                     </div>
 
                     <div class="flex justify-end gap-3 pt-2">
-                        <button @click="closeAddPengawas()" class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Batal</button>
-                        <button @click="addPengawasUsers()" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-md hover:shadow-lg transition-all">Tambah</button>
+                        <button @click="closeAddPengawas()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Batal</button>
+                        <button @click="addPengawasUsers()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-md hover:shadow-lg transition-all">Tambah</button>
                     </div>
                 </div>
             </div>

@@ -40,6 +40,12 @@
                 const last = localStorage.getItem('list-pengawasan:pengawas-update');
                 if (last) this.applyPengawasUpdate(JSON.parse(last));
             } catch (err) {}
+
+            setTimeout(() => {
+                if (!this.selectedPengawas && (this.items || []).length > 0) {
+                    this.selectProject(this.items[0]);
+                }
+            }, 0);
         },
         applyPengawasUpdate(payload) {
             const pengawasId = payload?.pengawas_id;
