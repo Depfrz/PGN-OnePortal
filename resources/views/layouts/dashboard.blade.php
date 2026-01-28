@@ -171,7 +171,7 @@
                             x-data="{ 
                                 activeAction: null, 
                                 canUseProjectActions: {{ $isListPengawasanDetail ? 'true' : 'false' }},
-                                canUseKeteranganActions: {{ ($isListPengawasanDetail || $isListPengawasanKegiatanDetail || $isListPengawasanKegiatanIndex || $isListPengawasanIndex) ? 'true' : 'false' }},
+                                canUseKeteranganActions: {{ ($isListPengawasanDetail || $isListPengawasanKegiatanDetail) ? 'true' : 'false' }},
                                 canAddProjectFromSidebar: {{ $isListPengawasanIndex ? 'true' : 'false' }},
                                 canAddActivityFromSidebar: {{ $isListPengawasanKegiatanIndex ? 'true' : 'false' }},
                                 hasSelectedProject: false
@@ -217,7 +217,7 @@
                                     </button>
                                     @endif
                                 @endif
-                                @if(($canWrite ?? false) || ($lpPermissions['tambah_keterangan'] ?? false) || ($lpPermissions['keterangan_checklist'] ?? false) || ($lpPermissions['edit_keterangan'] ?? false) || $isListPengawasanDetail || $isListPengawasanKegiatanDetail || $isListPengawasanKegiatanIndex || $isListPengawasanIndex)
+                                @if(($canWrite ?? false) || ($lpPermissions['tambah_keterangan'] ?? false) || ($lpPermissions['keterangan_checklist'] ?? false) || ($lpPermissions['edit_keterangan'] ?? false) || $isListPengawasanDetail || $isListPengawasanKegiatanDetail)
                                     <button 
                                         type="button"
                                         :disabled="!canUseKeteranganActions || (canAddProjectFromSidebar && !hasSelectedProject && !canAddActivityFromSidebar && !canUseProjectActions)"
@@ -228,7 +228,7 @@
                                         Tambah Keterangan
                                     </button>
                                 @endif
-                                @if(($canWrite ?? false) || ($lpPermissions['edit_keterangan'] ?? false) || $isListPengawasanDetail || $isListPengawasanKegiatanDetail || $isListPengawasanKegiatanIndex)
+                                @if(($canWrite ?? false) || ($lpPermissions['edit_keterangan'] ?? false) || $isListPengawasanDetail || $isListPengawasanKegiatanDetail)
                                     <button 
                                         type="button"
                                         :disabled="!canUseKeteranganActions || (canAddProjectFromSidebar && !hasSelectedProject && !canAddActivityFromSidebar && !canUseProjectActions)"

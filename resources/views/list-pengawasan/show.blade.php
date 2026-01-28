@@ -16,6 +16,26 @@
                     this.activePanel = 'edit_keterangan';
                 }
             });
+
+            try {
+                const params = new URLSearchParams(window.location.search || '');
+                const action = params.get('action') || '';
+                if (action === 'tambah_keterangan') {
+                    if (this.canWrite && (this.lpPerms.keterangan_checklist || this.lpPerms.tambah_keterangan || this.lpPerms.edit_keterangan)) {
+                        this.activePanel = 'tambah_keterangan';
+                    }
+                } else if (action === 'edit_keterangan') {
+                    if (this.canWrite && this.lpPerms.edit_keterangan) {
+                        this.activePanel = 'edit_keterangan';
+                    }
+                }
+                if (action === 'tambah_keterangan' || action === 'edit_keterangan') {
+                    params.delete('action');
+                    const qs = params.toString();
+                    const nextUrl = window.location.pathname + (qs ? `?${qs}` : '') + window.location.hash;
+                    window.history.replaceState({}, '', nextUrl);
+                }
+            } catch (e) {}
         },
         sidebarOpen: false,
         activePanel: '',

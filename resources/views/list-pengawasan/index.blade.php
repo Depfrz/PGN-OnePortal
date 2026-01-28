@@ -13,23 +13,8 @@
                     this.openManageProject();
                     return;
                 }
-                if (action === 'tambah_keterangan') {
-                    if (!this.selectedPengawas) return;
-                    if (!this.canWrite) return;
-                    if (!this.lpPerms.keterangan_checklist && !this.lpPerms.tambah_keterangan && !this.lpPerms.edit_keterangan) return;
-                    this.openEditKeterangan(this.selectedPengawas);
-                    try {
-                        this.$nextTick(() => {
-                            const el = document.getElementById('lp-new-keterangan-input');
-                            if (el) el.focus();
-                        });
-                    } catch (err) {}
-                    return;
-                }
-                if (action === 'edit_keterangan') {
-                    if (!this.selectedPengawas) return;
-                    if (!this.canWrite || !this.lpPerms.edit_keterangan) return;
-                    this.openEditKeterangan(this.selectedPengawas);
+                if (action === 'tambah_keterangan' || action === 'edit_keterangan') {
+                    this.redirectToProjectKeterangan(action);
                     return;
                 }
             });
@@ -73,35 +58,28 @@
             if (!item) return;
             item.pengawas_users = payload?.pengawas_users || [];
         },
+        redirectToProjectKeterangan(action) {
+            if (!this.selectedPengawas) return;
+            if (!this.canWrite) return;
+            if (action !== 'tambah_keterangan' && action !== 'edit_keterangan') return;
+            window.location.href = `/list-pengawasan/${this.selectedPengawas.id}?action=${encodeURIComponent(action)}`;
+        },
         closeAllOverlays() {
             this.closeAdd();
             this.closeKeteranganMenu();
-            this.editKeteranganModal = false;
             this.deleteModal = false;
             this.deleteBuktiModal = false;
             this.deleteKeteranganBuktiModal = false;
-            this.deleteOptionModal = false;
-            this.renameOptionModal = false;
-            this.saveKeteranganConfirmModal = false;
         },
         search: '',
         statusFilter: 'all',
         sortBy: 'created_desc',
         addModal: false,
-        editKeteranganModal: false,
         deleteModal: false,
         deleteBuktiModal: false,
         deleteKeteranganBuktiModal: false,
-        deleteOptionModal: false,
-        renameOptionModal: false,
-        saveKeteranganConfirmModal: false,
         selectedPengawas: null,
-        selectedKeterangan: [],
         selectedKeteranganBukti: { item: null, label: '' },
-        newLabel: '',
-        deleteOptionName: '',
-        renameOptionOldName: '',
-        renameOptionNewName: '',
         toast: { show: false, message: '', timeoutId: null },
         editingId: null,
         editPengawas: { nama: '' },
@@ -331,198 +309,6 @@
                 alert('Terjadi kesalahan sistem');
             }
         },
-        openEditKeterangan(item) {
-            if (!this.canWrite) return;
-            if (!this.lpPerms.keterangan_checklist && !this.lpPerms.tambah_keterangan && !this.lpPerms.edit_keterangan) return;
-            this.selectedPengawas = JSON.parse(JSON.stringify(item));
-            this.broadcastSelected(item);
-            this.selectedKeterangan = (item.keterangan || []).map(k => k.label);
-            this.newLabel = '';
-            this.editKeteranganModal = true;
-        },
-        replaceKeteranganLabel(oldName, newName) {
-            this.options = this.options.map(o => (o === oldName ? newName : o));
-            this.selectedKeterangan = this.selectedKeterangan.map(o => (o === oldName ? newName : o));
-            this.items = this.items.map(it => ({
-                ...it,
-                keterangan: (it.keterangan || []).map(o => (o.label === oldName ? { ...o, label: newName } : o))
-            }));
-        },
-        removeKeteranganLabel(name) {
-            this.options = this.options.filter(o => o !== name);
-            this.selectedKeterangan = this.selectedKeterangan.filter(o => o !== name);
-            this.items = this.items.map(it => ({
-                ...it,
-                keterangan: (it.keterangan || []).filter(o => o.label !== name)
-            }));
-        },
-        openRenameOption(name) {
-            if (!this.canWrite || !this.lpPerms.edit_keterangan) return;
-            if (!name) return;
-            this.renameOptionOldName = name;
-            this.renameOptionNewName = name;
-            this.renameOptionModal = true;
-        },
-        async confirmRenameOption() {
-            if (!this.canWrite || !this.lpPerms.edit_keterangan) return;
-            const oldName = this.renameOptionOldName;
-            const newName = this.renameOptionNewName?.trim() || '';
-            if (!oldName) return;
-            if (!newName) return;
-            if (newName === oldName) {
-                this.renameOptionModal = false;
-                this.renameOptionOldName = '';
-                this.renameOptionNewName = '';
-                return;
-            }
-            try {
-                const response = await fetch('/list-pengawasan/keterangan/rename', {
-                    method: 'PATCH',
-                    credentials: 'same-origin',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
-                    },
-                    body: JSON.stringify({ old_name: oldName, new_name: newName })
-                });
-                if (response.ok) {
-                    this.replaceKeteranganLabel(oldName, newName);
-                    this.renameOptionModal = false;
-                    this.renameOptionOldName = '';
-                    this.renameOptionNewName = '';
-                    this.showToast('Nama keterangan berhasil diubah');
-                } else {
-                    if (response.status === 403) {
-                        this.renameOptionModal = false;
-                        this.showToast('Anda tidak punya akses untuk mengubah opsi');
-                        return;
-                    }
-                    if (response.status === 419) {
-                        this.renameOptionModal = false;
-                        this.showToast('Sesi habis. Silakan refresh halaman lalu coba lagi');
-                        return;
-                    }
-
-                    const contentType = response.headers.get('content-type') || '';
-                    let message = 'Gagal mengubah nama keterangan';
-                    if (contentType.includes('application/json')) {
-                        const d = await response.json().catch(() => ({}));
-                        message = d.message || message;
-                    } else {
-                        const t = await response.text().catch(() => '');
-                        if (t) message = 'Gagal mengubah nama keterangan';
-                    }
-                    this.renameOptionModal = false;
-                    this.showToast(message);
-                }
-            } catch (e) {
-                console.error(e);
-                this.renameOptionModal = false;
-                this.showToast('Terjadi kesalahan sistem');
-            }
-        },
-        openDeleteOption(name) {
-            if (!this.canWrite || !this.lpPerms.edit_keterangan) return;
-            if (!name) return;
-            this.deleteOptionName = name;
-            this.deleteOptionModal = true;
-        },
-        async confirmDeleteOption() {
-            if (!this.canWrite || !this.lpPerms.edit_keterangan) return;
-            const name = this.deleteOptionName;
-            if (!name) return;
-            try {
-                const response = await fetch('/list-pengawasan/keterangan', {
-                    method: 'DELETE',
-                    credentials: 'same-origin',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
-                    },
-                    body: JSON.stringify({ name })
-                });
-                if (response.ok) {
-                    this.removeKeteranganLabel(name);
-                    this.deleteOptionName = '';
-                    this.deleteOptionModal = false;
-                    this.showToast('Opsi keterangan berhasil dihapus');
-                } else {
-                    if (response.status === 404) {
-                        this.removeKeteranganLabel(name);
-                        this.deleteOptionName = '';
-                        this.deleteOptionModal = false;
-                        this.showToast('Opsi keterangan dihapus dari daftar');
-                        return;
-                    }
-                    if (response.status === 403) {
-                        this.deleteOptionModal = false;
-                        this.showToast('Anda tidak punya akses untuk menghapus opsi');
-                        return;
-                    }
-                    if (response.status === 419) {
-                        this.deleteOptionModal = false;
-                        this.showToast('Sesi habis. Silakan refresh halaman lalu coba lagi');
-                        return;
-                    }
-
-                    const contentType = response.headers.get('content-type') || '';
-                    let message = 'Gagal menghapus opsi keterangan';
-                    if (contentType.includes('application/json')) {
-                        const d = await response.json().catch(() => ({}));
-                        message = d.message || message;
-                    } else {
-                        const t = await response.text().catch(() => '');
-                        if (t) message = 'Gagal menghapus opsi keterangan';
-                    }
-                    this.deleteOptionModal = false;
-                    this.showToast(message);
-                }
-            } catch (e) {
-                console.error(e);
-                this.deleteOptionModal = false;
-                this.showToast('Terjadi kesalahan sistem');
-            }
-        },
-        async addNewKeteranganToEdit() {
-            if (!this.canWrite) return;
-            if (!this.lpPerms.tambah_keterangan && !this.lpPerms.edit_keterangan) return;
-            const label = this.newLabel?.trim();
-            if (!label) return;
-            if (this.options.includes(label)) {
-                if (!this.selectedKeterangan.includes(label)) this.selectedKeterangan.push(label);
-                this.newLabel = '';
-                return;
-            }
-            try {
-                const response = await fetch('/list-pengawasan/keterangan', {
-                    method: 'POST',
-                    credentials: 'same-origin',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
-                    },
-                    body: JSON.stringify({ name: label })
-                });
-                if (response.ok) {
-                    this.options.push(label);
-                    if (!this.selectedKeterangan.includes(label)) this.selectedKeterangan.push(label);
-                    this.newLabel = '';
-                    this.showToast('Keterangan berhasil ditambahkan');
-                } else {
-                    const d = await response.json().catch(() => ({}));
-                    this.showToast(d.message || 'Gagal menambah keterangan');
-                }
-            } catch (e) {
-                console.error(e);
-                this.showToast('Terjadi kesalahan sistem');
-            }
-        },
         hasKeterangan(item, label) {
             if (!item || !item.keterangan) return false;
             return item.keterangan.some(k => k.label === label);
@@ -634,51 +420,6 @@
                 item.keterangan = previous;
                 this.showToast('Terjadi kesalahan sistem');
             }
-        },
-        async saveKeterangan() {
-            if (!this.canWrite || !this.lpPerms.keterangan_checklist) return;
-            const cleaned = (this.selectedKeterangan || [])
-                .map(label => (typeof label === 'string' ? label.trim() : ''))
-                .filter(Boolean);
-            try {
-                const response = await fetch(`/list-pengawasan/${this.selectedPengawas.id}/keterangan`, {
-                    method: 'PATCH',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
-                    },
-                    body: JSON.stringify({ keterangan: cleaned })
-                });
-                if (response.ok) {
-                    const data = await response.json().catch(() => ({}));
-                    const updated = data.keterangan || []; // Now array of objects
-                    this.items = this.items.map(i => (i.id === this.selectedPengawas.id
-                        ? { ...i, keterangan: updated }
-                        : i));
-                    if (this.selectedPengawas) {
-                        this.selectedPengawas.keterangan = updated;
-                    }
-                    // Update selectedKeterangan (which is strings) for the modal
-                    this.selectedKeterangan = updated.map(k => k.label);
-                    this.editKeteranganModal = false;
-                    this.showToast('Keterangan berhasil disimpan');
-                } else {
-                    const d = await response.json().catch(() => ({}));
-                    this.showToast(d.message || 'Gagal menyimpan keterangan');
-                }
-            } catch (e) {
-                console.error(e);
-                this.showToast('Terjadi kesalahan sistem');
-            }
-        },
-        openSaveKeteranganConfirm() {
-            if (!this.canWrite || !this.lpPerms.keterangan_checklist) return;
-            this.saveKeteranganConfirmModal = true;
-        },
-        async confirmSaveKeterangan() {
-            if (!this.canWrite || !this.lpPerms.keterangan_checklist) return;
-            this.saveKeteranganConfirmModal = false;
-            await this.saveKeterangan();
         },
         openDelete(item) {
             if (!this.canWrite || !this.lpPerms.nama_proyek) return;
@@ -965,36 +706,7 @@
                                         </div>
                                     </div>
 
-                                    <div class="flex items-center gap-1 flex-shrink-0" x-show="canWrite && lpPerms.nama_proyek">
-                                        <template x-if="editingId !== item.id">
-                                            <div class="flex items-center gap-1">
-                                                <button @click="startEdit(item)" :disabled="!canWrite || !lpPerms.nama_proyek" class="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors dark:text-gray-400 dark:hover:text-blue-300 dark:hover:bg-blue-900/20" title="Edit Nama Proyek">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
-                                                        <path d="M21.731 2.269a2.625 2.625 0 00-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 000-3.712zM19.513 8.199l-3.712-3.712-12.15 12.15a5.25 5.25 0 00-1.32 2.214l-.8 2.685a.75.75 0 00.933.933l2.685-.8a5.25 5.25 0 002.214-1.32L19.513 8.2z" />
-                                                    </svg>
-                                                </button>
-                                                <button @click="openDelete(item)" :disabled="!canWrite || !lpPerms.nama_proyek" class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors dark:hover:bg-red-900/20" title="Hapus Proyek">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-                                                    </svg>
-                                                </button>
-                                            </div>
-                                        </template>
-                                        <template x-if="editingId === item.id">
-                                            <div class="flex items-center gap-1">
-                                                <button @click="saveEdit(item)" class="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors dark:hover:bg-green-900/20" title="Simpan">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
-                                                        <path fill-rule="evenodd" d="M16.704 4.294a.75.75 0 01.002 1.06l-8.25 8.25a.75.75 0 01-1.06 0l-3.75-3.75a.75.75 0 011.06-1.06l3.22 3.22 7.72-7.72a.75.75 0 011.058 0z" clip-rule="evenodd" />
-                                                    </svg>
-                                                </button>
-                                                <button @click="cancelEdit()" class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors dark:hover:bg-red-900/20" title="Batal">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                                    </svg>
-                                                </button>
-                                            </div>
-                                        </template>
-                                    </div>
+                                    <div class="flex items-center gap-1 flex-shrink-0"></div>
                                 </div>
 
                                 <div class="mt-4 grid grid-cols-2 gap-3">
@@ -1019,11 +731,6 @@
                                             <template x-if="editingDeadlineId !== item.id">
                                                 <div class="flex items-center justify-between gap-2">
                                                     <span class="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate" x-text="item.deadline_display || '-'"></span>
-                                                    <button x-show="canWrite && lpPerms.deadline" :disabled="!canWrite || !lpPerms.deadline" type="button" @click="startEditDeadline(item)" class="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors dark:text-gray-400 dark:hover:text-blue-300 dark:hover:bg-blue-900/20" title="Edit Deadline">
-                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
-                                                    <path d="M21.731 2.269a2.625 2.625 0 00-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 000-3.712zM19.513 8.199l-3.712-3.712-12.15 12.15a5.25 5.25 0 00-1.32 2.214l-.8 2.685a.75.75 0 00.933.933l2.685-.8a5.25 5.25 0 002.214-1.32L19.513 8.2z" />
-                                                </svg>
-                                            </button>
                                                 </div>
                                             </template>
                                         </div>
@@ -1135,36 +842,7 @@
                                             </template>
                                         </div>
 
-                                        <div class="flex items-center gap-1 flex-shrink-0" x-show="canWrite && lpPerms.nama_proyek">
-                                            <template x-if="editingId !== item.id">
-                                                <div class="flex items-center gap-1">
-                                                    <button @click="startEdit(item)" :disabled="!canWrite || !lpPerms.nama_proyek" class="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors dark:text-gray-400 dark:hover:text-blue-300 dark:hover:bg-blue-900/20" title="Edit Nama Proyek">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
-                                                            <path d="M21.731 2.269a2.625 2.625 0 00-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 000-3.712zM19.513 8.199l-3.712-3.712-12.15 12.15a5.25 5.25 0 00-1.32 2.214l-.8 2.685a.75.75 0 00.933.933l2.685-.8a5.25 5.25 0 002.214-1.32L19.513 8.2z" />
-                                                        </svg>
-                                                    </button>
-                                                    <button @click="openDelete(item)" :disabled="!canWrite || !lpPerms.nama_proyek" class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors dark:hover:bg-red-900/20" title="Hapus Proyek">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-                                                        </svg>
-                                                    </button>
-                                                </div>
-                                            </template>
-                                            <template x-if="editingId === item.id">
-                                                <div class="flex items-center gap-1">
-                                                    <button @click="saveEdit(item)" class="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors dark:hover:bg-green-900/20" title="Simpan">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
-                                                            <path fill-rule="evenodd" d="M16.704 4.294a.75.75 0 01.002 1.06l-8.25 8.25a.75.75 0 01-1.06 0l-3.75-3.75a.75.75 0 011.06-1.06l3.22 3.22 7.72-7.72a.75.75 0 011.058 0z" clip-rule="evenodd" />
-                                                        </svg>
-                                                    </button>
-                                                    <button @click="cancelEdit()" class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors dark:hover:bg-red-900/20" title="Batal">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                                        </svg>
-                                                    </button>
-                                                </div>
-                                            </template>
-                                        </div>
+                                        <div class="flex items-center gap-1 flex-shrink-0"></div>
                                     </div>
                                 </td>
 
@@ -1203,11 +881,6 @@
                                     <template x-if="editingDeadlineId !== item.id">
                                         <div class="flex items-center justify-between gap-2">
                                             <span class="text-gray-700 text-sm dark:text-gray-300 truncate" x-text="item.deadline_display || '-'"></span>
-                                            <button x-show="canWrite && lpPerms.deadline" :disabled="!canWrite || !lpPerms.deadline" type="button" @click="startEditDeadline(item)" class="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors dark:text-gray-400 dark:hover:text-blue-300 dark:hover:bg-blue-900/20" title="Edit Deadline">
-                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
-                                                    <path d="M21.731 2.269a2.625 2.625 0 00-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 000-3.712zM19.513 8.199l-3.712-3.712-12.15 12.15a5.25 5.25 0 00-1.32 2.214l-.8 2.685a.75.75 0 00.933.933l2.685-.8a5.25 5.25 0 002.214-1.32L19.513 8.2z" />
-                                                </svg>
-                                            </button>
                                         </div>
                                     </template>
                                 </td>
@@ -1356,7 +1029,7 @@
                         <button
                             type="button"
                             class="text-[11px] font-medium text-blue-600 hover:text-blue-700 hover:underline dark:text-blue-300 dark:hover:text-blue-200"
-                            @click="openEditKeterangan(keteranganMenu.item); closeKeteranganMenu()"
+                            @click="redirectToProjectKeterangan('edit_keterangan')"
                         >
                             Edit keterangan
                         </button>
@@ -1450,125 +1123,6 @@
                  style="display: none;">
             </div>
         </template>
-
-        <!-- Edit Keterangan Modal -->
-        <div x-show="editKeteranganModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm transition-opacity" style="display: none;">
-            <div class="bg-white rounded-xl p-5 sm:p-6 w-[92vw] max-w-[560px] shadow-2xl transform transition-all dark:bg-gray-800 max-h-[85vh] overflow-y-auto">
-                <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-xl font-bold text-gray-800 dark:text-white">Edit Keterangan</h2>
-                    <button @click="editKeteranganModal = false" class="text-gray-400 hover:text-gray-600 transition-colors dark:hover:text-gray-200">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </button>
-                </div>
-                <div class="space-y-4">
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <template x-for="opt in options" :key="opt">
-                            <div class="flex items-center justify-between gap-2 p-3 border border-gray-200 rounded-lg shadow-sm hover:bg-blue-50 hover:border-blue-200 transition-colors dark:border-gray-700 dark:hover:bg-blue-900/20 dark:hover:border-blue-800">
-                                <label class="flex items-center gap-3 min-w-0 flex-1 cursor-pointer">
-                                    <input type="checkbox" :value="opt" x-model="selectedKeterangan" :disabled="!canWrite || !lpPerms.keterangan_checklist" class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 disabled:opacity-60">
-                                    <span class="text-sm font-medium text-gray-700 dark:text-gray-200 truncate" x-text="opt"></span>
-                                </label>
-                                <div class="flex items-center gap-1 flex-shrink-0">
-                                    <button type="button" @click.stop="openRenameOption(opt)" class="h-8 w-8 sm:h-9 sm:w-9 inline-flex items-center justify-center rounded-lg bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-700" :disabled="!canWrite || !lpPerms.edit_keterangan" :class="(!canWrite || !lpPerms.edit_keterangan) ? 'opacity-60 cursor-not-allowed' : ''">
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-4 w-4 sm:h-5 sm:w-5">
-                                            <path d="M13.586 3.586a2 2 0 112.828 2.828l-8.25 8.25a1 1 0 01-.414.263l-3 1a1 1 0 01-1.263-1.263l1-3a1 1 0 01.263-.414l8.25-8.25z" />
-                                            <path d="M12.293 5.293l2.414 2.414" />
-                                        </svg>
-                                    </button>
-                                    <button type="button" @click.stop="openDeleteOption(opt)" class="h-8 w-8 sm:h-9 sm:w-9 inline-flex items-center justify-center rounded-lg bg-white border border-gray-200 text-red-700 hover:bg-red-50 transition-colors dark:bg-gray-800 dark:border-gray-700 dark:text-red-300 dark:hover:bg-red-900/20" :disabled="!canWrite || !lpPerms.edit_keterangan" :class="(!canWrite || !lpPerms.edit_keterangan) ? 'opacity-60 cursor-not-allowed' : ''">
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-4 w-4 sm:h-5 sm:w-5">
-                                            <path fill-rule="evenodd" d="M6 8a1 1 0 011 1v7a1 1 0 11-2 0V9a1 1 0 011-1zm4 1a1 1 0 10-2 0v7a1 1 0 102 0V9zm3-4a1 1 0 00-1-1H8a1 1 0 00-1 1v1H4a1 1 0 100 2h1v10a2 2 0 002 2h6a2 2 0 002-2V8h1a1 1 0 100-2h-3V5z" clip-rule="evenodd" />
-                                        </svg>
-                                    </button>
-                                </div>
-                            </div>
-                        </template>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <input id="lp-new-keterangan-input" x-model="newLabel" type="text" placeholder="Tambah keterangan baru" :disabled="!canWrite || (!lpPerms.tambah_keterangan && !lpPerms.edit_keterangan)" class="flex-1 bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none disabled:opacity-60 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder:text-gray-500">
-                        <button @click="addNewKeteranganToEdit()" :disabled="!canWrite || (!lpPerms.tambah_keterangan && !lpPerms.edit_keterangan)" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-60">Tambah</button>
-                    </div>
-                    <div class="flex items-center justify-between mt-6">
-                        <div class="flex items-center space-x-3">
-                            <button @click="editKeteranganModal = false" class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Batal</button>
-                            <button @click="openSaveKeteranganConfirm()" :disabled="!canWrite || !lpPerms.keterangan_checklist" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-md hover:shadow-lg transition-all disabled:opacity-60">Simpan</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div x-show="renameOptionModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm transition-opacity" style="display: none;">
-            <div class="bg-white rounded-xl p-5 sm:p-6 w-[92vw] max-w-[480px] shadow-2xl transform transition-all dark:bg-gray-800">
-                <div class="flex items-center space-x-4 mb-6">
-                    <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 dark:bg-blue-900/30">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-6 w-6 text-blue-700 dark:text-blue-200">
-                            <path d="M13.586 3.586a2 2 0 112.828 2.828l-8.25 8.25a1 1 0 01-.414.263l-3 1a1 1 0 01-1.263-1.263l1-3a1 1 0 01.263-.414l8.25-8.25z" />
-                            <path d="M12.293 5.293l2.414 2.414" />
-                        </svg>
-                    </div>
-                    <div>
-                        <h2 class="text-xl font-bold text-gray-800 dark:text-white">Ubah Nama Keterangan</h2>
-                        <p class="text-sm text-gray-500 mt-1 dark:text-gray-400" x-text="renameOptionOldName"></p>
-                    </div>
-                </div>
-                <div class="space-y-5">
-                    <input x-model="renameOptionNewName" type="text" class="w-full bg-white border border-gray-200 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100 dark:placeholder:text-gray-500">
-                    <div class="flex justify-end space-x-3 mt-6">
-                        <button @click="renameOptionModal = false; renameOptionOldName = ''; renameOptionNewName = ''" class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Batal</button>
-                        <button @click="confirmRenameOption()" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-md hover:shadow-lg transition-all">Simpan</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div x-show="deleteOptionModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm transition-opacity" style="display: none;">
-            <div class="bg-white rounded-xl p-5 sm:p-6 w-[92vw] max-w-[480px] shadow-2xl transform transition-all dark:bg-gray-800">
-                <div class="flex items-center space-x-4 mb-6">
-                    <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 dark:bg-red-900/30">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-600 dark:text-red-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                        </svg>
-                    </div>
-                    <div>
-                        <h2 class="text-xl font-bold text-gray-800 dark:text-white">Hapus Opsi Keterangan</h2>
-                        <p class="text-sm text-gray-500 mt-1 dark:text-gray-400">Opsi ini akan dihapus dari daftar.</p>
-                    </div>
-                </div>
-                <div class="space-y-5">
-                    <p class="text-sm text-gray-600 dark:text-gray-300">Apakah Anda yakin ingin menghapus opsi keterangan berikut?</p>
-                    <div class="bg-red-50 border border-red-100 rounded-lg p-4 dark:bg-red-900/20 dark:border-red-900/40">
-                        <div class="font-semibold text-gray-900 dark:text-white" x-text="deleteOptionName"></div>
-                    </div>
-                    <div class="flex justify-end space-x-3 mt-6">
-                        <button @click="deleteOptionModal = false; deleteOptionName = ''" class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Batal</button>
-                        <button @click="confirmDeleteOption()" class="px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium shadow-md hover:shadow-lg transition-all">Ya, Hapus</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div x-show="saveKeteranganConfirmModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm transition-opacity" style="display: none;">
-            <div class="bg-white rounded-xl p-5 sm:p-6 w-[92vw] max-w-[480px] shadow-2xl transform transition-all dark:bg-gray-800">
-                <div class="flex items-center space-x-4 mb-6">
-                    <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 dark:bg-blue-900/30">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-6 w-6 text-blue-700 dark:text-blue-200">
-                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-11.25a.75.75 0 00-1.5 0v4.25c0 .414.336.75.75.75h2.5a.75.75 0 000-1.5h-1.75v-3.5z" clip-rule="evenodd" />
-                        </svg>
-                    </div>
-                    <div>
-                        <h2 class="text-xl font-bold text-gray-800 dark:text-white">Simpan Perubahan</h2>
-                        <p class="text-sm text-gray-500 mt-1 dark:text-gray-400">Pastikan pilihan keterangan sudah sesuai.</p>
-                    </div>
-                </div>
-                <div class="flex justify-end space-x-3 mt-6">
-                    <button @click="saveKeteranganConfirmModal = false" class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Batal</button>
-                    <button @click="confirmSaveKeterangan()" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-md hover:shadow-lg transition-all">OK, Simpan</button>
-                </div>
-            </div>
-        </div>
 
         <!-- Delete Modal -->
         <div x-show="deleteModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm transition-opacity" style="display: none;">
