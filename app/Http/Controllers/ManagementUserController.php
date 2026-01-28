@@ -31,15 +31,11 @@ class ManagementUserController extends Controller
             $defaultLpPermissions = [
                 'tambah_proyek' => true,
                 'nama_proyek' => true,
-                'tambah_kegiatan' => true,
-                'hapus_kegiatan' => true,
-                'tambah_keterangan' => true,
-                'edit_keterangan' => true,
-                'tambah_pengawasan' => true,
-                'edit_pengawasan' => true,
+                'pengawas' => true,
                 'deadline' => true,
                 'status' => true,
-                'keterangan_checklist' => true,
+                'keterangan' => true,
+                'edit_keterangan' => true,
                 'bukti' => true,
             ];
 
@@ -222,16 +218,12 @@ class ManagementUserController extends Controller
                 $extraPermissions = [
                     'list_pengawasan' => array_merge([
                         'tambah_proyek' => false,
-                        'nama_proyek' => false, // Edit Proyek (Nama, Divisi, Hapus)
-                        'tambah_kegiatan' => false,
-                        'hapus_kegiatan' => false,
-                        'tambah_keterangan' => false,
-                        'edit_keterangan' => false, // Edit teks keterangan & Hapus keterangan
-                        'tambah_pengawasan' => false,
-                        'edit_pengawasan' => false, // Ganti & Hapus pengawas
+                        'nama_proyek' => false,
+                        'pengawas' => false,
                         'deadline' => false,
                         'status' => false,
-                        'keterangan_checklist' => false, // Checklist & Upload foto
+                        'keterangan' => false,
+                        'edit_keterangan' => false,
                         'bukti' => false,
                     ], $sanitizedPermissions),
                 ];
