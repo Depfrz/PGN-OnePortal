@@ -16,12 +16,12 @@
                     return;
                 }
                 if (action === 'tambah_pengawas') {
-                    if (!this.canWrite || !this.lpPerms.pengawas) return;
+                    if (!this.canWrite || !this.lpPerms.tambah_pengawasan) return;
                     this.openAddPengawas();
                     return;
                 }
                 if (action === 'kelola_pengawas') {
-                    if (!this.canWrite || !this.lpPerms.pengawas) return;
+                    if (!this.canWrite || !this.lpPerms.edit_pengawasan) return;
                     const first = (this.project.pengawas_users || [])[0] || null;
                     if (first) this.openManagePengawasUser(first);
                 }
@@ -91,7 +91,7 @@
             return deadline < today;
         },
         openManagePengawasUser(user) {
-            if (!this.canWrite || !this.lpPerms.pengawas) return;
+            if (!this.canWrite || !this.lpPerms.edit_pengawasan) return;
             this.selectedPengawasUserItem = this.project;
             this.selectedPengawasUserAccount = user;
             this.replacePengawasUserId = user?.id || '';
@@ -104,7 +104,7 @@
             this.replacePengawasUserId = '';
         },
         async replacePengawasUser() {
-            if (!this.canWrite || !this.lpPerms.pengawas) return;
+            if (!this.canWrite || !this.lpPerms.edit_pengawasan) return;
             const item = this.selectedPengawasUserItem;
             const account = this.selectedPengawasUserAccount;
             const newUserId = parseInt(this.replacePengawasUserId, 10);
@@ -134,7 +134,7 @@
             }
         },
         async removePengawasUser() {
-            if (!this.canWrite || !this.lpPerms.pengawas) return;
+            if (!this.canWrite || !this.lpPerms.edit_pengawasan) return;
             const item = this.selectedPengawasUserItem;
             const account = this.selectedPengawasUserAccount;
             if (!item || !account) return;
@@ -163,7 +163,7 @@
             }
         },
         openAddPengawas() {
-            if (!this.canWrite || !this.lpPerms.pengawas) return;
+            if (!this.canWrite || !this.lpPerms.tambah_pengawasan) return;
             this.selectedPengawasUserIds = [];
             this.pengawasSearch = '';
             this.addPengawasModal = true;
@@ -177,7 +177,7 @@
             return (this.project.pengawas_users || []).some(u => u.id === userId);
         },
         async addPengawasUsers() {
-            if (!this.canWrite || !this.lpPerms.pengawas) return;
+            if (!this.canWrite || !this.lpPerms.tambah_pengawasan) return;
             const userIds = (this.selectedPengawasUserIds || [])
                 .map(v => parseInt(v, 10))
                 .filter(Boolean)
@@ -209,7 +209,7 @@
             }
         },
         async saveProject() {
-            if (!this.canWrite || !this.lpPerms.nama_proyek) return;
+            if (!this.canWrite || !this.lpPerms.tambah_kegiatan) return;
             const payload = {
                 nama_kegiatan: this.editProject.nama?.trim() || '',
                 deskripsi: this.editProject.deskripsi?.trim() || '',
@@ -292,7 +292,7 @@
             }
         },
         async saveKeterangan() {
-            if (!this.canWrite || !this.lpPerms.keterangan) return;
+            if (!this.canWrite || !this.lpPerms.keterangan_checklist) return;
             try {
                 const cleaned = (this.selectedKeterangan || [])
                     .map(label => (typeof label === 'string' ? label.trim() : ''))
@@ -578,16 +578,16 @@
                 <div class="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5">
                     <div class="flex items-center justify-between mb-4">
                         <div class="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">Informasi Kegiatan</div>
-                        <button type="button" x-show="canWrite && lpPerms.nama_proyek" @click="saveProject()" class="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors">Simpan</button>
+                        <button type="button" x-show="canWrite && lpPerms.tambah_kegiatan" @click="saveProject()" class="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors">Simpan</button>
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div class="col-span-1 sm:col-span-2">
                             <div class="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Nama Kegiatan</div>
-                            <input x-model="editProject.nama" :disabled="!canWrite || !lpPerms.nama_proyek" type="text" class="w-full bg-gray-50 border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none disabled:opacity-60 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100" />
+                            <input x-model="editProject.nama" :disabled="!canWrite || !lpPerms.tambah_kegiatan" type="text" class="w-full bg-gray-50 border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none disabled:opacity-60 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100" />
                         </div>
                         <div class="col-span-1 sm:col-span-2">
                             <div class="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Deskripsi</div>
-                            <textarea x-model="editProject.deskripsi" :disabled="!canWrite || !lpPerms.nama_proyek" rows="3" class="w-full bg-gray-50 border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none disabled:opacity-60 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100"></textarea>
+                            <textarea x-model="editProject.deskripsi" :disabled="!canWrite || !lpPerms.tambah_kegiatan" rows="3" class="w-full bg-gray-50 border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none disabled:opacity-60 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100"></textarea>
                         </div>
                         <div>
                             <div class="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Tanggal Mulai</div>
@@ -680,10 +680,10 @@
                         <template x-for="opt in options" :key="`opt-${opt}`">
                             <div class="flex items-center justify-between gap-3 p-3 border border-gray-200 rounded-lg shadow-sm hover:bg-blue-50 hover:border-blue-200 transition-colors dark:border-gray-700 dark:hover:bg-blue-900/20 dark:hover:border-blue-800">
                                 <label class="flex items-center gap-3 min-w-0 flex-1 cursor-pointer">
-                                    <input type="checkbox" :value="opt" x-model="selectedKeterangan" @change="saveKeterangan()" :disabled="!canWrite || !lpPerms.keterangan" class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 disabled:opacity-60">
+                                    <input type="checkbox" :value="opt" x-model="selectedKeterangan" @change="saveKeterangan()" :disabled="!canWrite || !lpPerms.keterangan_checklist" class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 disabled:opacity-60">
                                     <span class="text-sm font-medium text-gray-700 dark:text-gray-200 truncate" x-text="opt"></span>
                                 </label>
-                                <div class="flex items-center gap-2 flex-shrink-0" x-show="canWrite && lpPerms.bukti && selectedKeterangan.includes(opt)">
+                                <div class="flex items-center gap-2 flex-shrink-0" x-show="canWrite && lpPerms.keterangan_checklist && selectedKeterangan.includes(opt)">
                                     <template x-if="!getKeteranganBukti(opt)">
                                         <label class="px-3 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors cursor-pointer text-sm">
                                             Upload

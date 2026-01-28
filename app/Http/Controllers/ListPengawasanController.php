@@ -109,31 +109,29 @@ class ListPengawasanController extends Controller
 
     private function getListPengawasanPermissions($user): array
     {
+        // Default Full Access for Admin/Supervisor
+        $fullAccess = [
+            'tambah_proyek' => true,
+            'nama_proyek' => true,
+            'tambah_kegiatan' => true,
+            'hapus_kegiatan' => true,
+            'tambah_keterangan' => true,
+            'edit_keterangan' => true,
+            'tambah_pengawasan' => true,
+            'edit_pengawasan' => true,
+            'deadline' => true,
+            'status' => true,
+            'keterangan_checklist' => true,
+            'bukti' => true,
+        ];
+
         // Fallback: Check roles directly from collection to bypass potential cache issues
         if ($user->roles->whereIn('name', ['Admin', 'Supervisor'])->isNotEmpty()) {
-            return [
-                'tambah_proyek' => true,
-                'nama_proyek' => true,
-                'pengawas' => true,
-                'deadline' => true,
-                'status' => true,
-                'keterangan' => true,
-                'edit_keterangan' => true,
-                'bukti' => true,
-            ];
+            return $fullAccess;
         }
 
         if ($user->hasRole(['Admin', 'Supervisor'])) {
-            return [
-                'tambah_proyek' => true,
-                'nama_proyek' => true,
-                'pengawas' => true,
-                'deadline' => true,
-                'status' => true,
-                'keterangan' => true,
-                'edit_keterangan' => true,
-                'bukti' => true,
-            ];
+            return $fullAccess;
         }
 
         $module = Module::where('slug', 'list-pengawasan')->first();
@@ -141,11 +139,15 @@ class ListPengawasanController extends Controller
         $default = [
             'tambah_proyek' => false,
             'nama_proyek' => false,
-            'pengawas' => false,
+            'tambah_kegiatan' => false,
+            'hapus_kegiatan' => false,
+            'tambah_keterangan' => false,
+            'edit_keterangan' => false,
+            'tambah_pengawasan' => false,
+            'edit_pengawasan' => false,
             'deadline' => false,
             'status' => false,
-            'keterangan' => false,
-            'edit_keterangan' => false,
+            'keterangan_checklist' => false,
             'bukti' => false,
         ];
 
@@ -158,16 +160,7 @@ class ListPengawasanController extends Controller
             ->first();
 
         if ($access && $access->can_write) {
-            return [
-                'tambah_proyek' => true,
-                'nama_proyek' => true,
-                'pengawas' => true,
-                'deadline' => true,
-                'status' => true,
-                'keterangan' => true,
-                'edit_keterangan' => true,
-                'bukti' => true,
-            ];
+            return $fullAccess;
         }
 
         if (!$access || !is_array($access->extra_permissions['list_pengawasan'] ?? null)) {

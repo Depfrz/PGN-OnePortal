@@ -111,7 +111,7 @@
             }
         },
         async saveKeterangan() {
-            if (!this.canWrite || !this.lpPerms.keterangan) return;
+            if (!this.canWrite || !this.lpPerms.keterangan_checklist) return;
             try {
                 const response = await fetch(`/list-pengawasan/${this.project.id}/keterangan`, {
                     method: 'PATCH',
@@ -475,7 +475,7 @@
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <template x-for="opt in options" :key="`opt-${opt}`">
                             <label class="flex items-center p-3 border border-gray-200 rounded-lg shadow-sm cursor-pointer hover:bg-blue-50 hover:border-blue-200 transition-colors gap-3 dark:border-gray-700 dark:hover:bg-blue-900/20 dark:hover:border-blue-800">
-                                <input type="checkbox" :value="opt" x-model="selectedKeterangan" :disabled="!canWrite || !lpPerms.keterangan" class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 disabled:opacity-60">
+                                <input type="checkbox" :value="opt" x-model="selectedKeterangan" :disabled="!canWrite || !lpPerms.keterangan_checklist" class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 disabled:opacity-60">
                                 <span class="text-sm font-medium text-gray-700 dark:text-gray-200" x-text="opt"></span>
                             </label>
                         </template>
