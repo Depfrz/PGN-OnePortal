@@ -58,15 +58,7 @@ class ListPengawasanController extends Controller
             return false;
         }
 
-        if ($access->can_write) {
-            return true;
-        }
-
-        if ($access->can_read) {
-            return true;
-        }
-
-        return false;
+        return (bool) $access->can_write;
     }
 
     private function canAccessPengawas($user, int $pengawasId): bool
@@ -159,12 +151,12 @@ class ListPengawasanController extends Controller
             ->where('module_id', $module->id)
             ->first();
 
-        if ($access && isset($access->extra_permissions['list_pengawasan']) && is_array($access->extra_permissions['list_pengawasan'])) {
-            return array_merge($default, $access->extra_permissions['list_pengawasan']);
-        }
-
         if ($access && $access->can_write) {
             return $fullAccess;
+        }
+
+        if ($access && isset($access->extra_permissions['list_pengawasan']) && is_array($access->extra_permissions['list_pengawasan'])) {
+            return array_merge($default, $access->extra_permissions['list_pengawasan']);
         }
 
         return $default;
@@ -380,7 +372,7 @@ class ListPengawasanController extends Controller
             )
             ->orderBy('pengawas.created_at', 'desc');
 
-        if (!$user->hasRole(['Admin', 'Supervisor'])) {
+        if (!$user->hasRole(['Admin', 'Supervisor']) && !$this->canWriteForModule($user)) {
             $pengawasQuery->join('pengawas_users', 'pengawas_users.pengawas_id', '=', 'pengawas.id')
                 ->where('pengawas_users.user_id', $user->id);
         }
@@ -468,7 +460,7 @@ class ListPengawasanController extends Controller
                     'url' => $p->bukti_path ? asset('storage/' . $p->bukti_path) : null,
                 ],
             ];
-        })->toArray();
+        })->values()->toArray();
 
         $options = DB::table('keterangan_options')->orderBy('name')->pluck('name')->toArray();
         $users = User::orderBy('name')->get(['id', 'name', 'email'])->toArray();
