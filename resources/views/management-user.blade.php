@@ -13,18 +13,15 @@
         selectedAccess: [],
         dashboardAccess: [],
         listPengawasanPermissions: {
-            tambah_proyek: true,
-            nama_proyek: true,
-            tambah_kegiatan: true,
-            hapus_kegiatan: true,
-            tambah_keterangan: true,
-            edit_keterangan: true,
-            tambah_pengawasan: true,
-            edit_pengawasan: true,
-            deadline: true,
-            status: true,
-            keterangan_checklist: true,
-            bukti: true,
+            tambah_proyek: false,
+            nama_proyek: false,
+            tambah_kegiatan: false,
+            hapus_kegiatan: false,
+            tambah_keterangan: false,
+            edit_keterangan: false,
+            tambah_pengawasan: false,
+            edit_pengawasan: false,
+            bukti: false,
         },
         
         // Form Data
@@ -85,19 +82,17 @@
             this.selectedUser = JSON.parse(JSON.stringify(user)); // Clone object
             this.selectedAccess = [...this.selectedUser.hak_akses];
             this.dashboardAccess = [...(this.selectedUser.dashboard_access || [])];
+            const isFullAccessRole = ['Admin', 'Supervisor'].includes(this.selectedUser.role);
             this.listPengawasanPermissions = {
-                tambah_proyek: true,
-                nama_proyek: true,
-                tambah_kegiatan: true,
-                hapus_kegiatan: true,
-                tambah_keterangan: true,
-                edit_keterangan: true,
-                tambah_pengawasan: true,
-                edit_pengawasan: true,
-                deadline: true,
-                status: true,
-                keterangan_checklist: true,
-                bukti: true,
+                tambah_proyek: isFullAccessRole,
+                nama_proyek: isFullAccessRole,
+                tambah_kegiatan: isFullAccessRole,
+                hapus_kegiatan: isFullAccessRole,
+                tambah_keterangan: isFullAccessRole,
+                edit_keterangan: isFullAccessRole,
+                tambah_pengawasan: isFullAccessRole,
+                edit_pengawasan: isFullAccessRole,
+                bukti: isFullAccessRole,
                 ...(this.selectedUser.list_pengawasan_permissions || {}),
             };
             
@@ -675,13 +670,7 @@
                                                     <span class="text-xs text-gray-500 dark:text-gray-400">Mengedit teks dan menghapus keterangan.</span>
                                                 </div>
                                             </label>
-                                            <label class="flex items-center gap-4 cursor-pointer p-3 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-200 dark:hover:border-blue-800 transition-colors">
-                                                <input type="checkbox" x-model="listPengawasanPermissions.keterangan_checklist" class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                                                <div class="flex flex-col">
-                                                    <span class="text-sm font-semibold text-gray-800 dark:text-gray-200">Keterangan (Checklist & Upload)</span>
-                                                    <span class="text-xs text-gray-500 dark:text-gray-400">Mencentang checklist dan upload foto keterangan.</span>
-                                                </div>
-                                            </label>
+
 
                                             <!-- Group: Pengawas -->
                                             <div class="font-medium text-gray-700 dark:text-gray-300 mt-2 mb-1">Manajemen Pengawas</div>
@@ -702,20 +691,7 @@
 
                                             <!-- Group: Lainnya -->
                                             <div class="font-medium text-gray-700 dark:text-gray-300 mt-2 mb-1">Lainnya</div>
-                                            <label class="flex items-center gap-4 cursor-pointer p-3 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-200 dark:hover:border-blue-800 transition-colors">
-                                                <input type="checkbox" x-model="listPengawasanPermissions.deadline" class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                                                <div class="flex flex-col">
-                                                    <span class="text-sm font-semibold text-gray-800 dark:text-gray-200">Deadline</span>
-                                                    <span class="text-xs text-gray-500 dark:text-gray-400">Mengedit tanggal dan waktu deadline.</span>
-                                                </div>
-                                            </label>
-                                            <label class="flex items-center gap-4 cursor-pointer p-3 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-200 dark:hover:border-blue-800 transition-colors">
-                                                <input type="checkbox" x-model="listPengawasanPermissions.status" class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                                                <div class="flex flex-col">
-                                                    <span class="text-sm font-semibold text-gray-800 dark:text-gray-200">Status</span>
-                                                    <span class="text-xs text-gray-500 dark:text-gray-400">Mengganti status kemajuan kegiatan.</span>
-                                                </div>
-                                            </label>
+
                                             <label class="flex items-center gap-4 cursor-pointer p-3 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-200 dark:hover:border-blue-800 transition-colors">
                                                 <input type="checkbox" x-model="listPengawasanPermissions.bukti" class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
                                                 <div class="flex flex-col">

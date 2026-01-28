@@ -4,31 +4,14 @@
         lpPerms: {{ Js::from($lpPermissions ?? []) }},
         projectId: {{ Js::from($project->id) }},
         search: '',
-        statusFilter: 'all',
-        sortBy: 'created_desc',
         addModal: false,
         deleteModal: false,
         selectedItem: null,
         toast: { show: false, message: '', timeoutId: null },
-        newKegiatan: { nama_kegiatan: '', tanggal_mulai: '', deadline: '', status: 'Belum Dimulai', deskripsi: '' },
+        newKegiatan: { nama_kegiatan: '', deskripsi: '' },
         items: {{ Js::from($activities->items()) }},
 
         init() {
-            window.addEventListener('list-pengawasan:action', (e) => {
-                if (e.detail.action === 'tambah_kegiatan') {
-                    this.openAdd();
-                } else if (e.detail.action === 'tambah_keterangan') {
-                    this.openKeterangan();
-                } else if (e.detail.action === 'edit_keterangan') {
-                    this.openKeterangan();
-                }
-            });
-        },
-
-        openKeterangan() {
-            if (!this.canWrite) return;
-            // Redirect to project detail to manage keterangan
-            window.location.href = `/list-pengawasan/${this.projectId}`;
         },
         
         showToast(message) {
@@ -40,7 +23,7 @@
 
         openAdd() {
             if (!this.canWrite) return;
-            this.newKegiatan = { nama_kegiatan: '', tanggal_mulai: '', deadline: '', status: 'Belum Dimulai', deskripsi: '' };
+            this.newKegiatan = { nama_kegiatan: '', deskripsi: '' };
             this.addModal = true;
         },
 
@@ -99,21 +82,6 @@
                 alert('Terjadi kesalahan sistem');
             }
         },
-
-        statusMeta(status) {
-            switch(status) {
-                case 'Selesai': return { label: 'Selesai', cls: 'bg-green-100 text-green-700 border-green-200' };
-                case 'Sedang Berjalan': return { label: 'Sedang Berjalan', cls: 'bg-blue-100 text-blue-700 border-blue-200' };
-                case 'Terlambat': return { label: 'Terlambat', cls: 'bg-red-100 text-red-700 border-red-200' };
-                default: return { label: 'Belum Dimulai', cls: 'bg-gray-100 text-gray-700 border-gray-200' };
-            }
-        },
-
-        formatDate(dateStr) {
-            if (!dateStr) return '-';
-            const date = new Date(dateStr);
-            return date.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
-        }
     }" class="p-4 sm:p-6">
         
         <!-- Breadcrumb -->
@@ -157,14 +125,45 @@
         </div>
 
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
-            <div class="overflow-x-auto">
+            <!-- Mobile View -->
+            <div class="block sm:hidden divide-y divide-gray-200 dark:divide-gray-700">
+                @forelse($activities as $item)
+                <div class="p-4 flex flex-col gap-2">
+                    <div class="flex justify-between items-start gap-3">
+                        <div class="min-w-0">
+                            <a href="{{ route('list-pengawasan.kegiatan.show', $item->id) }}" class="text-base font-semibold text-gray-900 hover:text-blue-600 hover:underline dark:text-white line-clamp-2">
+                                {{ $item->nama_kegiatan }}
+                            </a>
+                            <div class="mt-1 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" />
+                                </svg>
+                                <span>{{ $item->tanggal_mulai ? $item->tanggal_mulai->format('d/m/Y') : '-' }}</span>
+                            </div>
+                        </div>
+                        <div class="flex-shrink-0" x-show="canWrite && lpPerms.hapus_kegiatan">
+                            <button @click="openDelete({{ Js::from($item) }})" class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors dark:hover:bg-red-900/20 dark:hover:text-red-400">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                @empty
+                <div class="p-8 text-center text-gray-500 dark:text-gray-400">
+                    Belum ada kegiatan.
+                </div>
+                @endforelse
+            </div>
+
+            <!-- Desktop View -->
+            <div class="hidden sm:block overflow-x-auto">
                 <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
                     <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
                         <tr>
                             <th scope="col" class="px-6 py-3">Nama Kegiatan</th>
                             <th scope="col" class="px-6 py-3">Tanggal Mulai</th>
-                            <th scope="col" class="px-6 py-3">Deadline</th>
-                            <th scope="col" class="px-6 py-3">Status</th>
                             <th scope="col" class="px-6 py-3 text-right">Action</th>
                         </tr>
                     </thead>
@@ -179,15 +178,6 @@
                             <td class="px-6 py-4">
                                 {{ $item->tanggal_mulai ? $item->tanggal_mulai->format('d/m/Y') : '-' }}
                             </td>
-                            <td class="px-6 py-4">
-                                {{ $item->deadline ? $item->deadline->format('d/m/Y') : '-' }}
-                            </td>
-                            <td class="px-6 py-4">
-                                <span class="px-2.5 py-0.5 rounded-full text-xs font-medium border"
-                                      :class="statusMeta('{{ $item->status }}').cls">
-                                    {{ $item->status }}
-                                </span>
-                            </td>
                             <td class="px-6 py-4 text-right">
                                 <div class="flex justify-end gap-2">
                                     <button x-show="canWrite && lpPerms.hapus_kegiatan" :disabled="!canWrite || !lpPerms.hapus_kegiatan" @click="openDelete({{ Js::from($item) }})" class="font-medium text-red-600 dark:text-red-500 hover:underline">Hapus</button>
@@ -196,7 +186,7 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="5" class="px-6 py-10 text-center text-gray-500 dark:text-gray-400">
+                            <td colspan="3" class="px-6 py-10 text-center text-gray-500 dark:text-gray-400">
                                 Belum ada kegiatan.
                             </td>
                         </tr>
@@ -211,8 +201,8 @@
         </div>
 
         <!-- Add Modal -->
-        <div x-show="addModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm" style="display: none;">
-            <div class="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl dark:bg-gray-800">
+        <div x-show="addModal" class="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm" style="display: none;">
+            <div class="bg-white rounded-xl p-6 w-[92vw] max-w-md shadow-2xl dark:bg-gray-800">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-lg font-bold text-gray-900 dark:text-white">Tambah Kegiatan Baru</h3>
                     <button @click="addModal = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
@@ -224,27 +214,6 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nama Kegiatan</label>
                         <input x-model="newKegiatan.nama_kegiatan" type="text" class="w-full rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                    </div>
-                    
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tanggal Mulai</label>
-                            <input x-model="newKegiatan.tanggal_mulai" type="date" class="w-full rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Deadline</label>
-                            <input x-model="newKegiatan.deadline" type="date" class="w-full rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Status</label>
-                        <select x-model="newKegiatan.status" class="w-full rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                            <option value="Belum Dimulai">Belum Dimulai</option>
-                            <option value="Sedang Berjalan">Sedang Berjalan</option>
-                            <option value="Selesai">Selesai</option>
-                            <option value="Terlambat">Terlambat</option>
-                        </select>
                     </div>
 
                     <div>
@@ -261,8 +230,8 @@
         </div>
 
         <!-- Delete Modal -->
-        <div x-show="deleteModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm" style="display: none;">
-            <div class="bg-white rounded-xl p-6 w-full max-w-sm shadow-2xl dark:bg-gray-800">
+        <div x-show="deleteModal" class="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm" style="display: none;">
+            <div class="bg-white rounded-xl p-6 w-[92vw] max-w-sm shadow-2xl dark:bg-gray-800">
                 <div class="text-center">
                     <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/30 mb-4">
                         <svg class="h-6 w-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>

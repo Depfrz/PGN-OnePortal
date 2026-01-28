@@ -3,22 +3,6 @@
         canWrite: {{ Js::from($canWrite ?? false) }},
         lpPerms: {{ Js::from($lpPermissions ?? []) }},
         init() {
-            window.addEventListener('list-pengawasan:action', (e) => {
-                const action = e?.detail?.action || '';
-                if (action === 'tambah_proyek') {
-                    this.openAdd();
-                    return;
-                }
-                if (action === 'edit_proyek') {
-                    this.openManageProject();
-                    return;
-                }
-                if (action === 'tambah_keterangan' || action === 'edit_keterangan') {
-                    this.redirectToProjectKeterangan(action);
-                    return;
-                }
-            });
-
             window.addEventListener('storage', (e) => {
                 if (e.key !== 'list-pengawasan:pengawas-update') return;
                 if (!e.newValue) return;
@@ -58,12 +42,6 @@
             if (!item) return;
             item.pengawas_users = payload?.pengawas_users || [];
         },
-        redirectToProjectKeterangan(action) {
-            if (!this.selectedPengawas) return;
-            if (!this.canWrite) return;
-            if (action !== 'tambah_keterangan' && action !== 'edit_keterangan') return;
-            window.location.href = `/list-pengawasan/${this.selectedPengawas.id}?action=${encodeURIComponent(action)}`;
-        },
         closeAllOverlays() {
             this.closeAdd();
             this.closeKeteranganMenu();
@@ -72,8 +50,6 @@
             this.deleteKeteranganBuktiModal = false;
         },
         search: '',
-        statusFilter: 'all',
-        sortBy: 'created_desc',
         addModal: false,
         deleteModal: false,
         deleteBuktiModal: false,
@@ -83,11 +59,8 @@
         toast: { show: false, message: '', timeoutId: null },
         editingId: null,
         editPengawas: { nama: '' },
-        editingDeadlineId: null,
-        editDeadline: '',
-        statusMenu: { open: false, x: 0, y: 0, item: null },
         keteranganMenu: { open: false, x: 0, y: 0, item: null },
-        newPengawas: { nama: '', deskripsi: '', tanggal: '', deadline: '', pengawas_users: [] },
+        newPengawas: { nama: '', pengawas_users: [] },
         manageProjectModal: false,
         manageProjectName: '',
         selectedBuktiItem: null,
@@ -105,7 +78,7 @@
         },
         openAdd() {
             if (!this.canWrite || !this.lpPerms.tambah_proyek) return;
-            this.newPengawas = { nama: '', deskripsi: '', tanggal: '', deadline: '', pengawas_users: [] };
+            this.newPengawas = { nama: '', pengawas_users: [] };
             this.addModal = true;
             document.body.style.overflow = 'hidden';
         },
@@ -171,24 +144,19 @@
                     },
                     body: JSON.stringify({
                         nama: this.newPengawas.nama,
-                        deskripsi: this.newPengawas.deskripsi,
-                        tanggal: this.newPengawas.tanggal || null,
-                        deadline: this.newPengawas.deadline || null,
                         pengawas_users: this.newPengawas.pengawas_users
                     })
                 });
                 if (response.ok) {
                     const data = await response.json();
-                    const deadlineDisplay = data.deadline ? data.deadline.split('-').reverse().join('-') : '-';
                     this.items.unshift({
                         id: data.id,
                         nama: this.newPengawas.nama,
                         created_at: new Date().toISOString(),
                         tanggal: data.tanggal || '-',
-                        deadline: data.deadline || null,
-                        deadline_display: deadlineDisplay,
-                        status: data.status || 'On Progress',
-                        keterangan: [],
+                        deadline: null,
+                        deadline_display: '-',
+                        kegiatan_terbaru: [],
                         pengawas_users: data.pengawas_users || [],
                         bukti: { path: null, name: null, mime: null, size: null, uploaded_at: null, url: null }
                     });
@@ -203,46 +171,10 @@
                 this.showToast('Terjadi kesalahan sistem');
             }
         },
-        async setStatus() {},
-        statusMeta(status) {
-            if (status === 'OFF') return { label: 'Pending', cls: 'bg-red-600 text-white hover:bg-red-700' };
-            if (status === 'Done') return { label: 'Done', cls: 'bg-green-600 text-white hover:bg-green-700' };
-            return { label: 'On Progress', cls: 'bg-amber-600 text-white hover:bg-amber-700' };
-        },
-        isLateProject(item) {
-            const deadline = item?.deadline || null;
-            const status = item?.status || '';
-            if (!deadline) return false;
-            if (status === 'Done') return false;
-            const today = new Date().toISOString().slice(0, 10);
-            return deadline < today;
-        },
-        openStatusMenu(e, item) {
-            if (!this.canWrite || !this.lpPerms.status) return;
-            const rect = e.currentTarget.getBoundingClientRect();
-            const menuWidth = 176;
-            const menuHeight = 156;
-            let x = rect.left;
-            let y = rect.bottom + 8;
-
-            const maxX = window.innerWidth - menuWidth - 12;
-            if (x > maxX) x = maxX;
-            if (x < 12) x = 12;
-
-            const maxY = window.innerHeight - menuHeight - 12;
-            if (y > maxY) y = rect.top - menuHeight - 8;
-            if (y < 12) y = 12;
-
-            this.statusMenu = { open: true, x, y, item };
-        },
-        closeStatusMenu() {
-                    this.statusMenu = { open: false, x: 0, y: 0, item: null };
-                },
         openKeteranganMenu(e, item) {
                     if (!this.canWrite) return;
             this.selectedPengawas = item;
             this.broadcastSelected(item);
-                    this.closeStatusMenu();
                     
                     const rect = e.currentTarget.getBoundingClientRect();
                     const menuWidth = 320; 
@@ -384,7 +316,7 @@
             e.target.value = '';
         },
         async toggleKeteranganFromTable(item, label) {
-            if (!this.canWrite || !this.lpPerms.keterangan_checklist) return;
+            if (!this.canWrite || !this.lpPerms.bukti) return;
             const currentLabels = (item.keterangan || []).map(k => k.label);
             const exists = currentLabels.includes(label);
             const nextLabels = exists ? currentLabels.filter(l => l !== label) : [...currentLabels, label];
@@ -471,35 +403,10 @@
         get filteredItems() {
             let data = this.items.slice();
 
-            if (this.statusFilter !== 'all') {
-                data = data.filter(i => {
-                    if (this.statusFilter === 'pending') return i.status === 'OFF';
-                    if (this.statusFilter === 'on_progress') return i.status === 'On Progress';
-                    if (this.statusFilter === 'done') return i.status === 'Done';
-                    return true;
-                });
-            }
-
             if (this.search) {
                 const q = this.search.toLowerCase();
                 data = data.filter(i => i.nama.toLowerCase().includes(q));
             }
-
-            data.sort((a, b) => {
-                if (this.sortBy === 'created_desc') {
-                    return (b.created_at || '').localeCompare(a.created_at || '');
-                }
-                if (this.sortBy === 'created_asc') {
-                    return (a.created_at || '').localeCompare(b.created_at || '');
-                }
-                if (this.sortBy === 'deadline_asc') {
-                    return (a.deadline || '').localeCompare(b.deadline || '');
-                }
-                if (this.sortBy === 'deadline_desc') {
-                    return (b.deadline || '').localeCompare(a.deadline || '');
-                }
-                return 0;
-            });
 
             return data;
         },
@@ -566,41 +473,6 @@
                 alert('Terjadi kesalahan sistem');
             }
         },
-        startEditDeadline(item) {
-            if (!this.canWrite || !this.lpPerms.deadline) return;
-            this.editingDeadlineId = item.id;
-            this.editDeadline = item.deadline || '';
-        },
-        cancelEditDeadline() {
-            this.editingDeadlineId = null;
-            this.editDeadline = '';
-        },
-        async saveDeadline(item) {
-            if (!this.canWrite) return;
-            try {
-                const response = await fetch(`/list-pengawasan/${item.id}/deadline`, {
-                    method: 'PATCH',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
-                    },
-                    body: JSON.stringify({ deadline: this.editDeadline || null })
-                });
-                if (response.ok) {
-                    const data = await response.json();
-                    item.deadline = data.deadline || null;
-                    item.deadline_display = data.deadline ? data.deadline.split('-').reverse().join('-') : '-';
-                    this.cancelEditDeadline();
-                    this.showToast('Deadline berhasil diperbarui');
-                } else {
-                    const d = await response.json().catch(() => ({}));
-                    alert(d.message || 'Gagal memperbarui deadline');
-                }
-            } catch (e) {
-                console.error(e);
-                alert('Terjadi kesalahan sistem');
-            }
-        },
     }" class="p-4 sm:p-6">
         <div x-effect="if (addModal) { closeKeteranganMenu(); }"></div>
         <template x-teleport="body">
@@ -611,7 +483,7 @@
                  x-transition:leave="transition ease-in duration-150"
                  x-transition:leave-start="opacity-100 translate-y-0"
                  x-transition:leave-end="opacity-0 translate-y-2"
-                 class="fixed top-5 right-5 z-[9999]"
+                 class="fixed top-5 right-5 z-[10000]"
                  style="display: none;">
                 <div class="flex items-center gap-3 rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-2xl px-4 py-3">
                     <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-200">
@@ -635,18 +507,18 @@
                         </svg>
                     </div>
                 </div>
-                <select x-model="statusFilter" class="w-full sm:w-auto bg-[#f7f8f9] border border-[#d6d9de] rounded-xl px-7 py-3 text-sm text-gray-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100">
-                    <option value="all">Semua Status</option>
-                    <option value="pending">Pending</option>
-                    <option value="on_progress">On Progress</option>
-                    <option value="done">Done</option>
-                </select>
-                <select x-model="sortBy" class="w-full sm:w-auto bg-[#f7f8f9] border border-[#d6d9de] rounded-xl px-4 py-3 text-sm text-gray-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100">
-                    <option value="created_desc">Terbaru</option>
-                    <option value="created_asc">Terlama</option>
-                    <option value="deadline_asc">Deadline Terdekat</option>
-                    <option value="deadline_desc">Deadline Terjauh</option>
-                </select>
+                <button x-show="selectedPengawas && canWrite && lpPerms.nama_proyek" @click="openManageProject()" class="hidden sm:inline-flex w-full sm:w-auto bg-white text-gray-700 border border-gray-300 font-medium text-sm py-2.5 px-4 rounded-lg hover:bg-gray-50 transition-all shadow-sm hover:shadow items-center justify-center dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                    </svg>
+                    Edit
+                </button>
+                <button x-show="selectedPengawas && canWrite && lpPerms.nama_proyek" @click="openDelete(selectedPengawas)" class="hidden sm:inline-flex w-full sm:w-auto bg-white text-red-600 border border-red-200 font-medium text-sm py-2.5 px-4 rounded-lg hover:bg-red-50 transition-all shadow-sm hover:shadow items-center justify-center dark:bg-gray-800 dark:border-red-900/30 dark:text-red-400 dark:hover:bg-red-900/20">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                    </svg>
+                    Hapus
+                </button>
                 <button x-show="canWrite && lpPerms.tambah_proyek" :disabled="!canWrite || !lpPerms.tambah_proyek" @click="openAdd()" class="w-full sm:w-auto bg-blue-600 text-white font-medium text-sm py-2.5 px-6 rounded-lg hover:bg-blue-700 transition-all shadow-md hover:shadow-lg inline-flex items-center justify-center">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
@@ -681,92 +553,68 @@
                                 @click="selectProject(item)"
                             >
                                 <div class="p-4">
-                                <div class="flex items-start justify-between gap-3">
-                                    <div class="min-w-0 flex-1">
-                                        <template x-if="editingId === item.id">
-                                            <input x-model="editPengawas.nama" type="text" class="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-sm font-semibold text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100" />
-                                        </template>
-                                        <template x-if="editingId !== item.id">
-                                            <a :href="'/list-pengawasan/' + item.id + '/kegiatan'" class="text-gray-900 font-semibold text-base dark:text-white truncate hover:underline" x-text="item.nama"></a>
-                                        </template>
-                                        <div class="mt-1 text-xs text-gray-500 dark:text-gray-400" x-text="item.tanggal"></div>
-                                        <div class="mt-3">
-                                            <div class="text-[11px] font-semibold tracking-wider text-gray-500 uppercase dark:text-gray-400">Pengawas</div>
-                                            <div class="mt-2 space-y-2">
-                                                <template x-if="!item.pengawas_users || item.pengawas_users.length === 0">
-                                                    <div class="text-xs text-gray-500 dark:text-gray-400">-</div>
-                                                </template>
-                                                <template x-for="u in item.pengawas_users" :key="`mobile-pengawas-${item.id}-${u.id}`">
-                                                    <div class="min-w-0">
-                                                        <div class="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate" x-text="u.name"></div>
-                                                        <div class="text-xs text-gray-500 dark:text-gray-400" x-text="u.email"></div>
-                                                    </div>
-                                                </template>
+                                    <div class="flex items-start justify-between gap-3">
+                                        <div class="min-w-0 flex-1">
+                                            <template x-if="editingId === item.id">
+                                                <input x-model="editPengawas.nama" type="text" class="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-sm font-semibold text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100" />
+                                            </template>
+                                            <template x-if="editingId !== item.id">
+                                                <a :href="'/list-pengawasan/' + item.id + '/kegiatan'" class="text-gray-900 font-semibold text-base dark:text-white truncate hover:underline block mb-1" x-text="item.nama"></a>
+                                            </template>
+                                            <div class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mb-3">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" />
+                                                </svg>
+                                                <span x-text="item.tanggal"></span>
+                                            </div>
+                                            
+                                            <div class="mb-3">
+                                                <div class="text-[10px] font-bold tracking-wider text-gray-400 uppercase dark:text-gray-500 mb-1">Pengawas</div>
+                                                <div class="space-y-1">
+                                                    <template x-if="!item.pengawas_users || item.pengawas_users.length === 0">
+                                                        <div class="text-sm text-gray-500 dark:text-gray-400 italic">-</div>
+                                                    </template>
+                                                    <template x-for="u in item.pengawas_users" :key="`mobile-pengawas-${item.id}-${u.id}`">
+                                                        <div class="flex items-center gap-2">
+                                                            <div class="w-5 h-5 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-[10px] font-bold text-gray-600 dark:text-gray-300">
+                                                                <span x-text="u.name.charAt(0)"></span>
+                                                            </div>
+                                                            <div class="min-w-0 flex-1">
+                                                                <div class="text-sm font-medium text-gray-700 dark:text-gray-200 truncate" x-text="u.name"></div>
+                                                            </div>
+                                                        </div>
+                                                    </template>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
 
-                                    <div class="flex items-center gap-1 flex-shrink-0"></div>
-                                </div>
-
-                                <div class="mt-4 grid grid-cols-2 gap-3">
-                                    <div class="rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900">
-                                        <div class="text-[11px] font-semibold tracking-wider text-gray-500 uppercase dark:text-gray-400">Deadline</div>
-                                        <div class="mt-2">
-                                            <template x-if="editingDeadlineId === item.id">
-                                                <div class="flex items-center gap-2">
-                                                    <input type="date" x-model="editDeadline" class="w-full bg-white border border-gray-200 rounded-lg px-2 py-2 text-xs font-semibold text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100" />
-                                                    <button @click="saveDeadline(item)" class="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors dark:hover:bg-green-900/20" title="Simpan Deadline">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
-                                                            <path fill-rule="evenodd" d="M16.704 4.294a.75.75 0 01.002 1.06l-8.25 8.25a.75.75 0 01-1.06 0l-3.75-3.75a.75.75 0 011.06-1.06l3.22 3.22 7.72-7.72a.75.75 0 011.058 0z" clip-rule="evenodd" />
-                                                        </svg>
-                                                    </button>
-                                                    <button @click="cancelEditDeadline()" class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors dark:hover:bg-red-900/20" title="Batal">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                                        </svg>
-                                                    </button>
-                                                </div>
-                                            </template>
-                                            <template x-if="editingDeadlineId !== item.id">
-                                                <div class="flex items-center justify-between gap-2">
-                                                    <span class="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate" x-text="item.deadline_display || '-'"></span>
-                                                </div>
-                                            </template>
+                                        <div class="flex items-center gap-1 flex-shrink-0" x-show="canWrite && lpPerms.nama_proyek">
+                                            <button @click.stop="selectedPengawas = item; openManageProject()" class="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors dark:hover:bg-blue-900/20 dark:hover:text-blue-400">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                                                </svg>
+                                            </button>
+                                            <button @click.stop="openDelete(item)" class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors dark:hover:bg-red-900/20 dark:hover:text-red-400">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                                </svg>
+                                            </button>
                                         </div>
                                     </div>
-
-                                    <div class="rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900">
-                                        <div class="text-[11px] font-semibold tracking-wider text-gray-500 uppercase dark:text-gray-400">Status</div>
-                                        <div class="mt-2">
-                                            <div class="inline-flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-xs font-bold shadow-sm transition-colors whitespace-nowrap" :class="statusMeta(item.status).cls">
-                                                <span class="truncate" x-text="statusMeta(item.status).label"></span>
-                                            </div>
-                                            <template x-if="isLateProject(item)">
-                                                <div class="mt-2 inline-flex items-center gap-2 rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-red-700 border border-red-100 dark:bg-red-900/20 dark:text-red-300 dark:border-red-900/30">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-                                                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.721-1.36 3.486 0l6.518 11.59c.75 1.334-.214 2.99-1.742 2.99H3.48c-1.528 0-2.492-1.656-1.742-2.99l6.52-11.59ZM10 8a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 10 8Zm0 7a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clip-rule="evenodd" />
-                                                    </svg>
-                                                    Terlambat
-                                                </div>
-                                            </template>
-                                        </div>
-                                    </div>
-                                </div>
 
                                 <div class="mt-4">
-                                    <div class="text-[11px] font-semibold tracking-wider text-gray-500 uppercase dark:text-gray-400">Kegiatan Selesai</div>
+                                    <div class="text-[11px] font-semibold tracking-wider text-gray-500 uppercase dark:text-gray-400">Kegiatan</div>
                                     <div class="mt-2 w-full rounded-xl border border-gray-200 bg-gray-50 p-3 text-left transition-colors dark:border-gray-700 dark:bg-gray-900">
-                                        <template x-if="!item.kegiatan_selesai || item.kegiatan_selesai.length === 0">
+                                        <template x-if="!item.kegiatan_terbaru || item.kegiatan_terbaru.length === 0">
                                             <span class="text-sm font-medium text-gray-500 dark:text-gray-400">-</span>
                                         </template>
-                                        <template x-if="item.kegiatan_selesai && item.kegiatan_selesai.length > 0">
+                                        <template x-if="item.kegiatan_terbaru && item.kegiatan_terbaru.length > 0">
                                             <div class="flex flex-wrap gap-2">
-                                                <template x-for="(k, idx) in item.kegiatan_selesai.slice(0, 3)" :key="k.id + '-' + idx">
+                                                <template x-for="(k, idx) in item.kegiatan_terbaru.slice(0, 3)" :key="k.id + '-' + idx">
                                                     <span class="inline-flex items-center rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-semibold text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200" x-text="k.nama"></span>
                                                 </template>
-                                                <template x-if="item.kegiatan_selesai.length > 3">
-                                                    <span class="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 border border-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-900/40" x-text="'+' + (item.kegiatan_selesai.length - 3)"></span>
+                                                <template x-if="item.kegiatan_terbaru.length > 3">
+                                                    <span class="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 border border-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-900/40" x-text="'+' + (item.kegiatan_terbaru.length - 3)"></span>
                                                 </template>
                                             </div>
                                         </template>
@@ -819,9 +667,7 @@
                                     <th class="pb-2 font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider pl-4">Nama Proyek</th>
                                     <th class="pb-2 font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[180px] pr-4">Pengawas</th>
                                     <th class="pb-2 font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[130px] pr-4">Tanggal Mulai</th>
-                                    <th class="pb-2 font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[140px] pr-4">Deadline</th>
-                                    <th class="pb-2 font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[100px] pr-4">Status</th>
-                                    <th class="pb-2 font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[220px] pr-4">Kegiatan Selesai</th>
+                                    <th class="pb-2 font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[220px] pr-4">Kegiatan</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -862,48 +708,23 @@
 
                                 <td class="p-4 text-sm text-gray-700 dark:text-gray-300 border-y border-gray-200 dark:border-gray-700 group-hover:border-blue-300 dark:group-hover:border-blue-700 transition-colors" x-text="item.tanggal"></td>
 
-                                <td class="p-4 border-y border-gray-200 dark:border-gray-700 group-hover:border-blue-300 dark:group-hover:border-blue-700 transition-colors">
-                                    <template x-if="editingDeadlineId === item.id">
-                                        <div class="flex items-center gap-1">
-                                            <input type="date" x-model="editDeadline" class="w-full bg-gray-50 border border-gray-300 rounded-lg px-2 py-1.5 text-xs font-semibold text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100" />
-                                            <button @click="saveDeadline(item)" class="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors dark:hover:bg-green-900/20" title="Simpan Deadline">
-                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
-                                                    <path fill-rule="evenodd" d="M16.704 4.294a.75.75 0 01.002 1.06l-8.25 8.25a.75.75 0 01-1.06 0l-3.75-3.75a.75.75 0 011.06-1.06l3.22 3.22 7.72-7.72a.75.75 0 011.058 0z" clip-rule="evenodd" />
-                                                </svg>
-                                            </button>
-                                            <button @click="cancelEditDeadline()" class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors dark:hover:bg-red-900/20" title="Batal">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                                </svg>
-                                            </button>
-                                        </div>
-                                    </template>
-                                    <template x-if="editingDeadlineId !== item.id">
-                                        <div class="flex items-center justify-between gap-2">
-                                            <span class="text-gray-700 text-sm dark:text-gray-300 truncate" x-text="item.deadline_display || '-'"></span>
-                                        </div>
-                                    </template>
-                                </td>
-
-                                <td class="p-4 border-y border-gray-200 dark:border-gray-700 group-hover:border-blue-300 dark:group-hover:border-blue-700 transition-colors">
-                                    <div class="inline-flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-xs font-bold shadow-sm transition-colors whitespace-nowrap" :class="statusMeta(item.status).cls">
-                                        <span class="truncate" x-text="statusMeta(item.status).label"></span>
-                                    </div>
-                                    <template x-if="isLateProject(item)">
-                                        <div class="mt-2 inline-flex items-center gap-2 rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-red-700 border border-red-100 dark:bg-red-900/20 dark:text-red-300 dark:border-red-900/30">
-                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-                                                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.721-1.36 3.486 0l6.518 11.59c.75 1.334-.214 2.99-1.742 2.99H3.48c-1.528 0-2.492-1.656-1.742-2.99l6.52-11.59ZM10 8a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 10 8Zm0 7a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clip-rule="evenodd" />
-                                            </svg>
-                                            Terlambat
-                                        </div>
-                                    </template>
-                                </td>
-
                                 <td class="p-4 rounded-r-lg border-y border-r border-gray-200 dark:border-gray-700 group-hover:border-blue-300 dark:group-hover:border-blue-700 transition-colors">
                                     <div class="w-full rounded-2xl border border-blue-100 bg-blue-50 px-4 py-2.5 text-left text-sm text-blue-700 flex items-start justify-between gap-3 dark:border-blue-900/40 dark:bg-blue-900/20 dark:text-blue-200">
                                         <div class="flex-1 min-w-0">
-                                            <span class="block text-[11px] font-semibold uppercase tracking-wide text-blue-500/80 mb-0.5">Kegiatan Selesai</span>
-                                            <span class="block text-xs sm:text-sm font-medium whitespace-normal leading-snug" x-text="(item.kegiatan_selesai && item.kegiatan_selesai.length) ? item.kegiatan_selesai.map(k => k.nama).join(', ') : '-'"></span>
+                                            <span class="block text-[11px] font-semibold uppercase tracking-wide text-blue-500/80 mb-0.5">Kegiatan</span>
+                                            <template x-if="!item.kegiatan_terbaru || item.kegiatan_terbaru.length === 0">
+                                                <span class="block text-xs sm:text-sm font-medium whitespace-normal leading-snug">-</span>
+                                            </template>
+                                            <template x-if="item.kegiatan_terbaru && item.kegiatan_terbaru.length > 0">
+                                                <div class="flex flex-wrap gap-2">
+                                                    <template x-for="(k, idx) in item.kegiatan_terbaru.slice(0, 3)" :key="k.id + '-' + idx">
+                                                        <span class="inline-flex items-center rounded-full border border-blue-200 bg-white px-3 py-1 text-[11px] font-semibold text-blue-700 dark:border-blue-900/50 dark:bg-gray-900 dark:text-blue-200" x-text="k.nama"></span>
+                                                    </template>
+                                                    <template x-if="item.kegiatan_terbaru.length > 3">
+                                                        <span class="inline-flex items-center rounded-full bg-blue-100 px-3 py-1 text-[11px] font-semibold text-blue-800 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-200 dark:border-blue-900/40" x-text="'+' + (item.kegiatan_terbaru.length - 3)"></span>
+                                                    </template>
+                                                </div>
+                                            </template>
                                         </div>
                                     </div>
                                 </td>
@@ -915,39 +736,6 @@
                 </div>
             </template>
         </div>
-
-        <template x-teleport="body">
-            <div
-                x-show="statusMenu.open"
-                x-transition:enter="transition ease-out duration-150"
-                x-transition:enter-start="opacity-0"
-                x-transition:enter-end="opacity-100"
-                x-transition:leave="transition ease-in duration-100"
-                x-transition:leave-start="opacity-100"
-                x-transition:leave-end="opacity-0"
-                class="fixed inset-0 z-[9999]"
-                style="display: none;"
-            >
-                <div class="absolute inset-0" @click="closeStatusMenu()"></div>
-                <div
-                    class="fixed w-44 rounded-xl border border-gray-100 bg-white shadow-xl ring-1 ring-black/5 dark:border-gray-700 dark:bg-gray-800 overflow-hidden"
-                    :style="`left:${statusMenu.x}px; top:${statusMenu.y}px;`"
-                >
-                    <button type="button" class="w-full text-left px-4 py-3 text-sm font-semibold text-gray-400 cursor-not-allowed flex items-center gap-3">
-                        <span class="h-2.5 w-2.5 rounded-full bg-red-600"></span>
-                        Pending
-                    </button>
-                    <button type="button" class="w-full text-left px-4 py-3 text-sm font-semibold text-gray-400 cursor-not-allowed flex items-center gap-3">
-                        <span class="h-2.5 w-2.5 rounded-full bg-amber-600"></span>
-                        On Progress
-                    </button>
-                    <button type="button" class="w-full text-left px-4 py-3 text-sm font-semibold text-gray-400 cursor-not-allowed flex items-center gap-3">
-                        <span class="h-2.5 w-2.5 rounded-full bg-green-600"></span>
-                        Done
-                    </button>
-                </div>
-            </div>
-        </template>
 
         <template x-teleport="body">
             <div
@@ -973,7 +761,7 @@
                                     type="button"
                                     class="flex-1 text-left text-xs sm:text-sm"
                                     @click="toggleKeteranganFromTable(keteranganMenu.item, opt)"
-                                    :disabled="!canWrite || !lpPerms.keterangan_checklist"
+                                    :disabled="!canWrite || !lpPerms.bukti"
                                 >
                                     <div
                                         class="flex items-center gap-3 rounded-lg border border-transparent px-1 py-0.5"
@@ -1025,7 +813,7 @@
                             </div>
                         </template>
                     </div>
-                    <div class="border-t border-gray-100 dark:border-gray-700 px-3 py-2 flex justify-end" x-show="canWrite && (lpPerms.keterangan_checklist || lpPerms.tambah_keterangan || lpPerms.edit_keterangan)">
+                    <div class="border-t border-gray-100 dark:border-gray-700 px-3 py-2 flex justify-end" x-show="canWrite && (lpPerms.bukti || lpPerms.tambah_keterangan || lpPerms.edit_keterangan)">
                         <button
                             type="button"
                             class="text-[11px] font-medium text-blue-600 hover:text-blue-700 hover:underline dark:text-blue-300 dark:hover:text-blue-200"
@@ -1046,7 +834,7 @@
                  x-transition:leave="transition ease-in duration-200"
                  x-transition:leave-start="translate-x-0"
                  x-transition:leave-end="translate-x-full"
-                 class="fixed inset-y-0 right-0 z-[90] w-full max-w-md bg-white dark:bg-gray-800 shadow-2xl overflow-y-auto border-l border-gray-200 dark:border-gray-700" 
+                 class="fixed inset-y-0 right-0 z-[9999] w-full max-w-md bg-white dark:bg-gray-800 shadow-2xl overflow-y-auto border-l border-gray-200 dark:border-gray-700" 
                  style="display: none;">
                 <div class="p-6">
                 <div class="flex justify-between items-center mb-6">
@@ -1061,10 +849,6 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-200">Nama Proyek</label>
                         <input x-model="newPengawas.nama" type="text" placeholder="Masukkan nama proyek" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder:text-gray-500">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-200">Deskripsi</label>
-                        <textarea x-model="newPengawas.deskripsi" rows="3" placeholder="Masukkan deskripsi proyek" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder:text-gray-500"></textarea>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-200">Pengawas</label>
@@ -1090,16 +874,6 @@
                             </template>
                         </div>
                     </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-200">Tanggal Mulai</label>
-                            <input x-model="newPengawas.tanggal" type="date" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-200">Deadline</label>
-                            <input x-model="newPengawas.deadline" type="date" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100">
-                        </div>
-                    </div>
                     <div class="flex justify-end space-x-3 mt-8 pt-4 border-t border-gray-100 dark:border-gray-700">
                         <button @click="closeAdd()" class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Batal</button>
                         <button @click="savePengawas()" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-md hover:shadow-lg transition-all">Simpan</button>
@@ -1119,13 +893,13 @@
                  x-transition:leave-start="opacity-100"
                  x-transition:leave-end="opacity-0"
                  @click="closeAdd()"
-                 class="fixed inset-0 z-[85] bg-black/50 backdrop-blur-sm"
+                 class="fixed inset-0 z-[9998] bg-black/50 backdrop-blur-sm"
                  style="display: none;">
             </div>
         </template>
 
         <!-- Delete Modal -->
-        <div x-show="deleteModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm transition-opacity" style="display: none;">
+        <div x-show="deleteModal" class="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm transition-opacity" style="display: none;">
             <div class="bg-white rounded-xl p-5 sm:p-6 w-[92vw] max-w-[480px] shadow-2xl transform transition-all dark:bg-gray-800">
                 <div class="flex items-center space-x-4 mb-6">
                     <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 dark:bg-red-900/30">
@@ -1152,7 +926,7 @@
             </div>
         </div>
 
-        <div x-show="manageProjectModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm transition-opacity" style="display: none;">
+        <div x-show="manageProjectModal" class="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm transition-opacity" style="display: none;">
             <div class="bg-white rounded-xl p-5 sm:p-6 w-[92vw] max-w-[480px] shadow-2xl transform transition-all dark:bg-gray-800">
                 <div class="flex items-center justify-between mb-6">
                     <div>
@@ -1181,7 +955,7 @@
             </div>
         </div>
 
-        <div x-show="deleteBuktiModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm transition-opacity" style="display: none;">
+        <div x-show="deleteBuktiModal" class="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm transition-opacity" style="display: none;">
             <div class="bg-white rounded-xl p-5 sm:p-6 w-[92vw] max-w-[480px] shadow-2xl transform transition-all dark:bg-gray-800">
                 <div class="flex items-center space-x-4 mb-6">
                     <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 dark:bg-red-900/30">
@@ -1208,7 +982,7 @@
             </div>
         </div>
 
-        <div x-show="deleteKeteranganBuktiModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm transition-opacity" style="display: none;">
+        <div x-show="deleteKeteranganBuktiModal" class="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm transition-opacity" style="display: none;">
             <div class="bg-white rounded-xl p-5 sm:p-6 w-[92vw] max-w-[480px] shadow-2xl transform transition-all dark:bg-gray-800">
                 <div class="flex items-center space-x-4 mb-6">
                     <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 dark:bg-red-900/30">

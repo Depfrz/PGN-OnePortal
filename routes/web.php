@@ -100,11 +100,6 @@ Route::middleware(['auth', 'verified', 'admin.single.session'])->group(function 
     Route::delete('/list-pengawasan/{id}/pengawas-users', [ListPengawasanController::class, 'removePengawasUser'])
         ->whereNumber('id');
 
-    // Kegiatan Helper Routes (for show-kegiatan.blade.php)
-    Route::patch('/list-pengawasan/kegiatan/{activity}/status', [ListPengawasanController::class, 'updateStatusKegiatan'])
-        ->whereNumber('activity');
-    Route::patch('/list-pengawasan/kegiatan/{activity}/deadline', [ListPengawasanController::class, 'updateDeadlineKegiatan'])
-        ->whereNumber('activity');
     Route::patch('/list-pengawasan/kegiatan/{activity}/keterangan', [ListPengawasanController::class, 'updateKeteranganKegiatan'])
         ->whereNumber('activity');
     Route::post('/list-pengawasan/kegiatan/{activity}/bukti', [ListPengawasanController::class, 'uploadBuktiKegiatan'])
@@ -127,20 +122,6 @@ Route::middleware(['auth', 'verified', 'admin.single.session'])->group(function 
     Route::patch('/list-pengawasan/{id}', [ListPengawasanController::class, 'updatePengawas'])
         ->whereNumber('id')
         ->name('list-pengawasan.update');
-    Route::patch('/list-pengawasan/{id}/status', [ListPengawasanController::class, 'updateStatus'])
-        ->whereNumber('id')
-        ->name('list-pengawasan.update-status');
-    Route::patch('/list-pengawasan/{id}/deadline', [ListPengawasanController::class, 'updateDeadline'])
-        ->whereNumber('id')
-        ->name('list-pengawasan.update-deadline');
-
-    // Management Keterangan Options Routes
-    Route::post('/list-pengawasan/keterangan', [ListPengawasanController::class, 'storeOption'])
-        ->name('list-pengawasan.keterangan.store');
-    Route::patch('/list-pengawasan/keterangan/rename', [ListPengawasanController::class, 'renameOption'])
-        ->name('list-pengawasan.keterangan.rename');
-    Route::delete('/list-pengawasan/keterangan', [ListPengawasanController::class, 'destroyOption'])
-        ->name('list-pengawasan.keterangan.destroy');
 
     // Bukti Routes (Project Level)
     Route::post('/list-pengawasan/{id}/bukti', [ListPengawasanController::class, 'uploadBukti'])

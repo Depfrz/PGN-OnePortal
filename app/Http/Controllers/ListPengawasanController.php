@@ -10,25 +10,25 @@ use App\Notifications\SystemNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\Rule;
 use Carbon\Carbon;
 use Spatie\Permission\Exceptions\RoleDoesNotExist;
 
 class ListPengawasanController extends Controller
 {
-    private const ALLOWED_STATUS = ['OFF', 'On Progress', 'Done'];
-
     private function normalizeStatus(?string $status): string
     {
-        if (!$status) {
-            return 'On Progress';
+        if (!$status || $status === 'OFF') {
+            return 'Belum Dimulai';
         }
 
-        if ($status === 'Active') {
-            return 'On Progress';
+        if ($status === 'Active' || $status === 'On Progress') {
+            return 'Sedang Berjalan';
+        }
+
+        if ($status === 'Done') {
+            return 'Selesai';
         }
 
         return $status;
@@ -58,15 +58,7 @@ class ListPengawasanController extends Controller
             return false;
         }
 
-        if ($access->can_write) {
-            return true;
-        }
-
-        if ($access->can_read) {
-            return true;
-        }
-
-        return false;
+        return (bool) $access->can_write;
     }
 
     private function canAccessPengawas($user, int $pengawasId): bool
@@ -119,9 +111,6 @@ class ListPengawasanController extends Controller
             'edit_keterangan' => true,
             'tambah_pengawasan' => true,
             'edit_pengawasan' => true,
-            'deadline' => true,
-            'status' => true,
-            'keterangan_checklist' => true,
             'bukti' => true,
         ];
 
@@ -145,9 +134,6 @@ class ListPengawasanController extends Controller
             'edit_keterangan' => false,
             'tambah_pengawasan' => false,
             'edit_pengawasan' => false,
-            'deadline' => false,
-            'status' => false,
-            'keterangan_checklist' => false,
             'bukti' => false,
         ];
 
@@ -158,10 +144,6 @@ class ListPengawasanController extends Controller
         $access = ModuleAccess::where('user_id', $user->id)
             ->where('module_id', $module->id)
             ->first();
-
-        if ($access && $access->can_write) {
-            return $fullAccess;
-        }
 
         if (!$access || !is_array($access->extra_permissions['list_pengawasan'] ?? null)) {
             return $default;
@@ -393,28 +375,21 @@ class ListPengawasanController extends Controller
         $pengawasIds = $pengawas->pluck('id')->all();
         $assignedUsersMap = $this->getAssignedUsersMap($pengawasIds);
 
-        $completedActivitiesMap = PengawasKegiatan::whereIn('pengawas_id', $pengawasIds)
-            ->where('status', 'Selesai')
+        $latestActivitiesMap = PengawasKegiatan::whereIn('pengawas_id', $pengawasIds)
             ->orderBy('created_at', 'desc')
-            ->get(['id', 'pengawas_id', 'nama_kegiatan', 'deadline', 'tanggal_mulai'])
+            ->get(['id', 'pengawas_id', 'nama_kegiatan', 'created_at'])
             ->groupBy('pengawas_id')
             ->map(function ($rows) {
                 return $rows->map(function ($a) {
-                    $deadline = $a->deadline ? Carbon::parse($a->deadline) : null;
-                    $tanggalMulai = $a->tanggal_mulai ? Carbon::parse($a->tanggal_mulai) : null;
-
                     return [
                         'id' => $a->id,
                         'nama' => $a->nama_kegiatan,
-                        'tanggal' => $tanggalMulai ? $tanggalMulai->format('d-m-Y') : '-',
-                        'deadline' => $deadline ? $deadline->format('Y-m-d') : null,
-                        'deadline_display' => $deadline ? $deadline->format('d-m-Y') : '-',
                     ];
                 })->values()->toArray();
             })
             ->toArray();
 
-        $items = $pengawas->map(function ($p) use ($assignedUsersMap, $completedActivitiesMap) {
+        $items = $pengawas->map(function ($p) use ($assignedUsersMap, $latestActivitiesMap) {
             $keterangan = DB::table('pengawas_keterangan')
                 ->join('keterangan_options', 'keterangan_options.id', '=', 'pengawas_keterangan.keterangan_option_id')
                 ->where('pengawas_keterangan.pengawas_id', $p->id)
@@ -457,7 +432,7 @@ class ListPengawasanController extends Controller
                 'deadline_display' => $deadline ? $deadline->format('d-m-Y') : '-',
                 'status' => $this->normalizeStatus($p->status),
                 'keterangan' => $keterangan,
-                'kegiatan_selesai' => $completedActivitiesMap[$p->id] ?? [],
+                'kegiatan_terbaru' => $latestActivitiesMap[$p->id] ?? [],
                 'pengawas_users' => $assignedUsersMap[$p->id] ?? [],
                 'bukti' => [
                     'path' => $p->bukti_path,
@@ -490,29 +465,21 @@ class ListPengawasanController extends Controller
             return response()->json(['message' => 'Unauthorized action.'], 403);
         }
 
-        $request->merge([
-            'deadline' => $request->input('deadline') ?: null,
-            'tanggal' => $request->input('tanggal') ?: null,
-        ]);
-
         $data = $request->validate([
             'nama' => ['required', 'string', 'max:255'],
-            'deskripsi' => ['nullable', 'string'],
             'divisi' => ['nullable', 'string', 'max:255'],
-            'tanggal' => ['nullable', 'date'],
-            'deadline' => ['nullable', 'date'],
             'pengawas_users' => ['array'],
             'pengawas_users.*' => ['integer', 'exists:users,id'],
         ]);
 
         $status = 'OFF';
+        $tanggalMulai = now();
 
         $pengawasId = DB::table('pengawas')->insertGetId([
             'name' => $data['nama'],
-            'deskripsi' => $data['deskripsi'] ?? null,
             'divisi' => $data['divisi'] ?? null,
-            'tanggal' => $data['tanggal'] ?? null,
-            'deadline' => $data['deadline'] ?? null,
+            'tanggal' => $tanggalMulai->toDateString(),
+            'deadline' => null,
             'status' => $status,
             'created_at' => now(),
             'updated_at' => now(),
@@ -541,15 +508,13 @@ class ListPengawasanController extends Controller
 
         $this->notifyListPengawasan($user, $pengawasId, 'create', "Menambahkan proyek pengawasan: {$data['nama']}");
 
-        $tanggalMulai = $data['tanggal'] ? Carbon::parse($data['tanggal'])->format('d-m-Y') : now()->format('d-m-Y');
-
         return response()->json([
             'message' => 'Pengawas berhasil ditambahkan',
             'id' => $pengawasId,
             'divisi' => $data['divisi'] ?? '-',
-            'tanggal' => $tanggalMulai,
-            'deadline' => $data['deadline'] ?? null,
-            'status' => $status,
+            'tanggal' => $tanggalMulai->format('d-m-Y'),
+            'deadline' => null,
+            'status' => $this->normalizeStatus($status),
             'pengawas_users' => $assignedUsers,
         ]);
     }
@@ -733,7 +698,7 @@ class ListPengawasanController extends Controller
             if (!$this->canWriteForModule($user)) {
                 return response()->json(['message' => 'Unauthorized action.'], 403);
             }
-            if (!$this->getListPengawasanPermissions($user)['keterangan_checklist']) {
+            if (!$this->getListPengawasanPermissions($user)['bukti']) {
                 return response()->json(['message' => 'Unauthorized action.'], 403);
             }
             if (!$this->canAccessPengawas($user, $id)) {
@@ -884,77 +849,6 @@ class ListPengawasanController extends Controller
         return response()->json(['message' => 'Pengawas berhasil dihapus']);
     }
 
-    public function updateStatus(Request $request, int $id)
-    {
-        /** @var \App\Models\User $user */
-        $user = Auth::user();
-        if (!$this->canWriteForModule($user)) {
-            return response()->json(['message' => 'Unauthorized action.'], 403);
-        }
-        if (!$this->getListPengawasanPermissions($user)['status']) {
-            return response()->json(['message' => 'Unauthorized action.'], 403);
-        }
-        if (!$this->canAccessPengawas($user, $id)) {
-            return response()->json(['message' => 'Unauthorized action.'], 403);
-        }
-
-        $data = $request->validate([
-            'status' => ['required', 'string', Rule::in(self::ALLOWED_STATUS)],
-        ]);
-
-        $updated = DB::table('pengawas')->where('id', $id)->update([
-            'status' => $data['status'],
-            'updated_at' => now(),
-        ]);
-
-        if (!$updated) {
-            return response()->json(['message' => 'Pengawas tidak ditemukan'], 404);
-        }
-
-        $projectName = $this->getPengawasName($id) ?? 'Proyek';
-        $this->notifyListPengawasan($user, $id, 'update', "Mengubah status proyek {$projectName} menjadi {$data['status']}");
-
-        return response()->json(['message' => 'Status berhasil diperbarui']);
-    }
-
-    public function updateDeadline(Request $request, int $id)
-    {
-        /** @var \App\Models\User $user */
-        $user = Auth::user();
-        if (!$this->canWriteForModule($user)) {
-            return response()->json(['message' => 'Unauthorized action.'], 403);
-        }
-        if (!$this->getListPengawasanPermissions($user)['deadline']) {
-            return response()->json(['message' => 'Unauthorized action.'], 403);
-        }
-        if (!$this->canAccessPengawas($user, $id)) {
-            return response()->json(['message' => 'Unauthorized action.'], 403);
-        }
-
-        $request->merge(['deadline' => $request->input('deadline') ?: null]);
-        $data = $request->validate([
-            'deadline' => ['nullable', 'date'],
-        ]);
-
-        $updated = DB::table('pengawas')->where('id', $id)->update([
-            'deadline' => $data['deadline'] ?? null,
-            'updated_at' => now(),
-        ]);
-
-        if (!$updated) {
-            return response()->json(['message' => 'Proyek tidak ditemukan'], 404);
-        }
-
-        $projectName = $this->getPengawasName($id) ?? 'Proyek';
-        $deadlineText = $data['deadline'] ?? '-';
-        $this->notifyListPengawasan($user, $id, 'update', "Memperbarui deadline proyek {$projectName}: {$deadlineText}");
-
-        return response()->json([
-            'message' => 'Deadline berhasil diperbarui',
-            'deadline' => $data['deadline'] ?? null,
-        ]);
-    }
-
     public function uploadBukti(Request $request, int $id)
     {
         /** @var \App\Models\User $user */
@@ -1046,133 +940,6 @@ class ListPengawasanController extends Controller
         $this->notifyListPengawasan($user, $id, 'update', "Menghapus bukti untuk proyek: {$projectName}");
 
         return response()->json(['message' => 'Bukti berhasil dihapus']);
-    }
-
-    public function storeOption(Request $request)
-    {
-        /** @var \App\Models\User $user */
-        $user = Auth::user();
-        if (!$this->canWriteForModule($user)) {
-            return response()->json(['message' => 'Unauthorized action.'], 403);
-        }
-
-        $perms = $this->getListPengawasanPermissions($user);
-        if (!$perms['tambah_keterangan'] && !$perms['edit_keterangan']) {
-            return response()->json(['message' => 'Unauthorized action.'], 403);
-        }
-
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-        ]);
-
-        $name = trim($data['name']);
-        if ($name === '') {
-            return response()->json(['message' => 'Nama keterangan wajib diisi'], 422);
-        }
-
-        $exists = DB::table('keterangan_options')->where('name', $name)->exists();
-        if ($exists) {
-            return response()->json([
-                'message' => 'Keterangan sudah ada',
-                'name' => $name,
-            ]);
-        }
-
-        DB::table('keterangan_options')->insert([
-            'name' => $name,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-
-        return response()->json([
-            'message' => 'Keterangan berhasil ditambahkan',
-            'name' => $name,
-        ]);
-    }
-
-    public function renameOption(Request $request)
-    {
-        /** @var \App\Models\User $user */
-        $user = Auth::user();
-        if (!$this->canWriteForModule($user)) {
-            return response()->json(['message' => 'Unauthorized action.'], 403);
-        }
-        if (!$this->getListPengawasanPermissions($user)['edit_keterangan']) {
-            return response()->json(['message' => 'Unauthorized action.'], 403);
-        }
-
-        $data = $request->validate([
-            'old_name' => ['required', 'string', 'max:255'],
-            'new_name' => ['required', 'string', 'max:255'],
-        ]);
-
-        $exists = DB::table('keterangan_options')->where('name', $data['new_name'])->exists();
-        if ($exists) {
-            return response()->json(['message' => 'Nama keterangan sudah ada'], 422);
-        }
-
-        $updated = DB::table('keterangan_options')->where('name', $data['old_name'])->update([
-            'name' => $data['new_name'],
-            'updated_at' => now(),
-        ]);
-
-        if (!$updated) {
-            return response()->json(['message' => 'Keterangan tidak ditemukan'], 404);
-        }
-
-        return response()->json(['message' => 'Keterangan berhasil diubah']);
-    }
-
-    public function deleteOption(Request $request)
-    {
-        return $this->destroyOption($request);
-    }
-
-    public function destroyOption(Request $request)
-    {
-        /** @var \App\Models\User $user */
-        $user = Auth::user();
-        if (!$this->canWriteForModule($user)) {
-            return response()->json(['message' => 'Unauthorized action.'], 403);
-        }
-        if (!$this->getListPengawasanPermissions($user)['edit_keterangan']) {
-            return response()->json(['message' => 'Unauthorized action.'], 403);
-        }
-
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-        ]);
-
-        $opt = DB::table('keterangan_options')->where('name', $data['name'])->first();
-        if (!$opt) {
-            return response()->json(['message' => 'Keterangan tidak ditemukan'], 404);
-        }
-
-        DB::transaction(function () use ($opt) {
-            $projectRows = DB::table('pengawas_keterangan')
-                ->where('keterangan_option_id', $opt->id)
-                ->get(['bukti_path']);
-            foreach ($projectRows as $row) {
-                if (!empty($row->bukti_path)) {
-                    Storage::disk('public')->delete($row->bukti_path);
-                }
-            }
-            DB::table('pengawas_keterangan')->where('keterangan_option_id', $opt->id)->delete();
-
-            $activityRows = DB::table('pengawas_kegiatan_keterangan')
-                ->where('keterangan_option_id', $opt->id)
-                ->get(['bukti_path']);
-            foreach ($activityRows as $row) {
-                if (!empty($row->bukti_path)) {
-                    Storage::disk('public')->delete($row->bukti_path);
-                }
-            }
-            DB::table('pengawas_kegiatan_keterangan')->where('keterangan_option_id', $opt->id)->delete();
-
-            DB::table('keterangan_options')->where('id', $opt->id)->delete();
-        });
-
-        return response()->json(['message' => 'Keterangan berhasil dihapus']);
     }
 
     public function uploadBuktiKeterangan(Request $request, int $id)
@@ -1320,33 +1087,23 @@ class ListPengawasanController extends Controller
 
     public function storeKegiatan(Request $request, int $id)
     {
-        Log::info('storeKegiatan called', ['id' => $id, 'data' => $request->all()]);
-
         /** @var \App\Models\User $user */
         $user = Auth::user();
         if (!$this->canWriteForModule($user)) {
             return response()->json(['message' => 'Unauthorized action.'], 403);
         }
 
-        $request->merge([
-            'tanggal_mulai' => $request->input('tanggal_mulai') ?: null,
-            'deadline' => $request->input('deadline') ?: null,
-        ]);
-
         $data = $request->validate([
             'nama_kegiatan' => ['required', 'string', 'max:255'],
-            'tanggal_mulai' => ['nullable', 'date'],
-            'deadline' => ['nullable', 'date'],
-            'status' => ['required', 'string'],
             'deskripsi' => ['nullable', 'string'],
         ]);
 
         $kegiatan = new PengawasKegiatan();
         $kegiatan->pengawas_id = $id;
         $kegiatan->nama_kegiatan = $data['nama_kegiatan'];
-        $kegiatan->tanggal_mulai = $data['tanggal_mulai'] ?? null;
-        $kegiatan->deadline = $data['deadline'] ?? null;
-        $kegiatan->status = $data['status'];
+        $kegiatan->tanggal_mulai = now()->toDateString();
+        $kegiatan->deadline = null;
+        $kegiatan->status = 'Belum Dimulai';
         $kegiatan->deskripsi = $data['deskripsi'] ?? null;
         $kegiatan->save();
 
@@ -1480,44 +1237,6 @@ class ListPengawasanController extends Controller
         return response()->json(['message' => 'Kegiatan berhasil dihapus']);
     }
 
-    public function updateStatusKegiatan(Request $request, int $activity)
-    {
-        /** @var \App\Models\User $user */
-        $user = Auth::user();
-        if (!$this->canWriteForModule($user)) return response()->json(['message' => 'Unauthorized action.'], 403);
-
-        $act = PengawasKegiatan::findOrFail($activity);
-        if (!$this->canAccessPengawas($user, $act->pengawas_id)) return response()->json(['message' => 'Unauthorized action.'], 403);
-
-        $data = $request->validate(['status' => ['required', 'string']]);
-        $act->status = $data['status'];
-        $act->save();
-
-        $this->recalculateProjectStatus($act->pengawas_id);
-
-        return response()->json(['message' => 'Status berhasil diperbarui']);
-    }
-
-    public function updateDeadlineKegiatan(Request $request, int $activity)
-    {
-        /** @var \App\Models\User $user */
-        $user = Auth::user();
-        if (!$this->canWriteForModule($user)) return response()->json(['message' => 'Unauthorized action.'], 403);
-
-        $act = PengawasKegiatan::findOrFail($activity);
-        if (!$this->canAccessPengawas($user, $act->pengawas_id)) return response()->json(['message' => 'Unauthorized action.'], 403);
-
-        $request->merge(['deadline' => $request->input('deadline') ?: null]);
-        $data = $request->validate(['deadline' => ['nullable', 'date']]);
-        $act->deadline = $data['deadline'];
-        $act->save();
-
-        return response()->json([
-            'message' => 'Deadline berhasil diperbarui',
-            'deadline' => $act->deadline ? Carbon::parse($act->deadline)->format('Y-m-d') : null
-        ]);
-    }
-
     public function uploadBuktiKegiatan(Request $request, int $activity)
     {
         /** @var \App\Models\User $user */
@@ -1604,7 +1323,7 @@ class ListPengawasanController extends Controller
             return response()->json(['message' => 'Unauthorized action.'], 403);
         }
 
-        if (!$this->getListPengawasanPermissions($user)['keterangan_checklist']) {
+        if (!$this->getListPengawasanPermissions($user)['bukti']) {
             return response()->json(['message' => 'Unauthorized action.'], 403);
         }
 

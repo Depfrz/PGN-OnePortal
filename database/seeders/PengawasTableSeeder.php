@@ -25,7 +25,7 @@ class PengawasTableSeeder extends Seeder
                 'name' => 'Depe',
                 'divisi' => 'PMO QA/QC',
                 'tanggal' => NULL,
-                'status' => 'Done',
+                'status' => 'Selesai',
                 'created_at' => '2026-01-22 07:22:55',
                 'updated_at' => '2026-01-22 07:23:51',
             ),

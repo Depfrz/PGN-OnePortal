@@ -28,19 +28,19 @@ class ManagementUserController extends Controller
             $listPengawasanAccess = $user->moduleAccesses
                 ->first(fn($ma) => $ma->module && $ma->module->slug === 'list-pengawasan');
 
+            $roleName = $user->roles->first()?->name ?? 'User';
+            $isFullAccessRole = in_array($roleName, ['Admin', 'Supervisor'], true);
+
             $defaultLpPermissions = [
-                'tambah_proyek' => true,
-                'nama_proyek' => true,
-                'tambah_kegiatan' => true,
-                'hapus_kegiatan' => true,
-                'tambah_keterangan' => true,
-                'edit_keterangan' => true,
-                'tambah_pengawasan' => true,
-                'edit_pengawasan' => true,
-                'deadline' => true,
-                'status' => true,
-                'keterangan_checklist' => true,
-                'bukti' => true,
+                'tambah_proyek' => $isFullAccessRole,
+                'nama_proyek' => $isFullAccessRole,
+                'tambah_kegiatan' => $isFullAccessRole,
+                'hapus_kegiatan' => $isFullAccessRole,
+                'tambah_keterangan' => $isFullAccessRole,
+                'edit_keterangan' => $isFullAccessRole,
+                'tambah_pengawasan' => $isFullAccessRole,
+                'edit_pengawasan' => $isFullAccessRole,
+                'bukti' => $isFullAccessRole,
             ];
 
             $lpPermissions = $defaultLpPermissions;
@@ -58,7 +58,7 @@ class ManagementUserController extends Controller
                 'email' => $user->email,
                 'instansi' => $user->instansi ?? '-',
                 'jabatan' => $user->jabatan ?? '-',
-                'role' => $user->roles->first()?->name ?? 'User',
+                'role' => $roleName,
                 'status' => 'Active', // Static for now
                 'hak_akses' => $user->moduleAccesses->map(fn($ma) => $ma->module->name)->values()->toArray(),
                 'dashboard_access' => $user->moduleAccesses->filter(fn($ma) => $ma->show_on_dashboard)->map(fn($ma) => $ma->module->name)->values()->toArray(),
@@ -229,9 +229,6 @@ class ManagementUserController extends Controller
                         'edit_keterangan' => false, // Edit teks keterangan & Hapus keterangan
                         'tambah_pengawasan' => false,
                         'edit_pengawasan' => false, // Ganti & Hapus pengawas
-                        'deadline' => false,
-                        'status' => false,
-                        'keterangan_checklist' => false, // Checklist & Upload foto
                         'bukti' => false,
                     ], $sanitizedPermissions),
                 ];
