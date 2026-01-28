@@ -24,6 +24,7 @@ class User extends Authenticatable
         'profile_photo_path',
         'instansi',
         'jabatan',
+        'last_session_id',
         'password',
     ];
 
