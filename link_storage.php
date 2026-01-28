@@ -1,52 +1,48 @@
 <?php
 
-// Konfigurasi Path (Sesuaikan jika struktur folder hosting Anda berbeda)
-// Asumsi:
-// 1. File ini diupload ke 'public_html'
-// 2. Folder aplikasi Laravel ada di '../laravel_app' (sejajar dengan public_html)
-// 3. Folder storage target ada di '../laravel_app/storage/app/public'
+// Konfigurasi Path (DIUPDATE)
+// Asumsi struktur folder hosting:
+// /home/user/public_html  <-- File ini ditaruh di sini
+// /home/user/laravel_app  <-- Folder aplikasi Anda
 
+// Target yang benar (lokasi fisik file):
+// Naik satu level dari public_html (..), lalu masuk ke laravel_app/storage/app/public
 $targetFolder = __DIR__ . '/../laravel_app/storage/app/public';
+
+// Link yang akan dibuat (shortcut):
+// Di dalam folder public_html/storage
 $linkFolder = __DIR__ . '/storage';
 
-echo "<h1>Perbaikan Symlink Storage</h1>";
-echo "<p>Target Folder (Asli): <code>" . $targetFolder . "</code></p>";
+echo "<h1>Perbaikan Symlink Storage (Mode: ../laravel_app)</h1>";
+echo "<p>Target Folder (Sumber File): <code>" . realpath(__DIR__ . '/../laravel_app') . "/storage/app/public</code></p>";
 echo "<p>Link Folder (Shortcut): <code>" . $linkFolder . "</code></p>";
 
-// 1. Cek apakah folder Target Asli benar-benar ada
+// 1. Cek folder target
 if (!file_exists($targetFolder)) {
-    die("<h3 style='color:red'>ERROR: Folder target tidak ditemukan!</h3>
-         <p>Pastikan path <code>../laravel_app/storage/app/public</code> benar.</p>");
+    echo "<h3 style='color:red'>ERROR: Folder target tidak ditemukan!</h3>";
+    echo "<p>Sistem mencoba mengakses: <code>$targetFolder</code></p>";
+    echo "<p>Pastikan nama folder aplikasi Anda di luar public_html benar-benar tertulis <strong>laravel_app</strong> (huruf kecil semua, tanpa spasi).</p>";
+    die();
 }
 
-// 2. Cek apakah shortcut 'storage' di public_html sudah ada
+// 2. Bersihkan shortcut lama jika ada
 if (file_exists($linkFolder)) {
-    echo "<p>Shortcut 'storage' sudah ada.</p>";
-    
-    // Jika itu symlink, kita hapus dulu biar bersih
     if (is_link($linkFolder)) {
-        echo "<p>Menghapus symlink lama...</p>";
-        unlink($linkFolder);
-    } 
-    // Jika itu folder biasa (kadang terjadi kalau salah copy), coba hapus (hati-hati)
-    elseif (is_dir($linkFolder)) {
-        echo "<p>Folder 'storage' yang ada bukan symlink, mencoba menghapus (pastikan folder ini kosong/salah)...</p>";
-        // rmdir hanya bisa hapus folder kosong. Jika isi file, harus manual via File Manager
-        if (@rmdir($linkFolder)) {
-            echo "<p>Folder lama berhasil dihapus.</p>";
-        } else {
-            die("<h3 style='color:red'>GAGAL: Tidak bisa menghapus folder 'storage' yang sudah ada.</h3>
-                 <p>Silakan hapus folder 'public_html/storage' secara manual lewat File Manager cPanel, lalu refresh halaman ini.</p>");
-        }
+        unlink($linkFolder); // Hapus symlink lama
+        echo "<p>Symlink lama dihapus.</p>";
+    } elseif (is_dir($linkFolder)) {
+        // Coba rename folder storage asli (bukan symlink) jadi storage_backup biar aman
+        rename($linkFolder, __DIR__ . '/storage_backup_' . time());
+        echo "<p>Folder 'storage' yang bukan symlink dipindahkan ke backup.</p>";
     }
 }
 
 // 3. Buat Symlink Baru
 if (symlink($targetFolder, $linkFolder)) {
     echo "<h3 style='color:green'>SUKSES: Symlink berhasil dibuat!</h3>";
-    echo "<p>Sekarang coba akses file/gambar di website Anda.</p>";
-    echo "<p><strong>PENTING:</strong> Segera hapus file <code>link_storage.php</code> ini setelah selesai demi keamanan.</p>";
+    echo "<p>Sekarang file di <code>laravel_app</code> sudah terhubung ke <code>public_html</code>.</p>";
+    echo "<p>Silakan refresh halaman website Anda dan coba klik 'Lihat' lagi.</p>";
 } else {
     echo "<h3 style='color:red'>GAGAL: Tidak bisa membuat symlink.</h3>";
-    echo "<p>Kemungkinan fungsi <code>symlink()</code> dinonaktifkan oleh hosting atau izin folder tidak sesuai.</p>";
+    echo "<p>Kemungkinan izin akses dibatasi oleh hosting.</p>";
 }
