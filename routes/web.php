@@ -162,6 +162,8 @@ Route::middleware(['auth', 'verified', 'admin.single.session'])->group(function 
         Route::get('/{document}', [BukuSakuController::class, 'show'])->name('show');
         Route::get('/{document}/edit', [BukuSakuController::class, 'edit'])->name('edit');
         Route::put('/{document}', [BukuSakuController::class, 'update'])->name('update');
+        // Hosting compatibility: accept POST as update (method spoof sometimes blocked)
+        Route::post('/{document}', [BukuSakuController::class, 'update'])->name('update.post');
         Route::delete('/{document}', [BukuSakuController::class, 'destroy'])->name('destroy');
         
         Route::get('/{document}/download', [BukuSakuController::class, 'download'])->name('download');
