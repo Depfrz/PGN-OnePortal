@@ -278,8 +278,13 @@ class BukuSakuController extends Controller
         /** @var User $user */
         $user = Auth::user();
 
-        // Check permission (Owner or Admin/Supervisor)
-        if ($document->user_id !== $user->id && !$user->hasAnyRole(['Admin', 'Supervisor'])) {
+        $moduleIds = \App\Models\Module::whereIn('name', ['Pengecekan File', 'Upload Dokumen', 'Buku Saku'])->pluck('id');
+        $hasWriteAccess = \App\Models\ModuleAccess::where('user_id', $user->id)
+            ->whereIn('module_id', $moduleIds)
+            ->where('can_write', true)
+            ->exists();
+
+        if ($document->user_id !== $user->id && !$user->hasAnyRole(['Admin', 'Supervisor']) && !$hasWriteAccess) {
              return redirect()->back()->with('error', 'Anda tidak memiliki izin untuk mengedit dokumen ini.');
         }
 
@@ -294,8 +299,13 @@ class BukuSakuController extends Controller
         /** @var User $user */
         $user = Auth::user();
 
-        // Check permission
-        if ($document->user_id !== $user->id && !$user->hasAnyRole(['Admin', 'Supervisor'])) {
+        $moduleIds = \App\Models\Module::whereIn('name', ['Pengecekan File', 'Upload Dokumen', 'Buku Saku'])->pluck('id');
+        $hasWriteAccess = \App\Models\ModuleAccess::where('user_id', $user->id)
+            ->whereIn('module_id', $moduleIds)
+            ->where('can_write', true)
+            ->exists();
+
+        if ($document->user_id !== $user->id && !$user->hasAnyRole(['Admin', 'Supervisor']) && !$hasWriteAccess) {
              return redirect()->back()->with('error', 'Anda tidak memiliki izin untuk mengedit dokumen ini.');
         }
 
