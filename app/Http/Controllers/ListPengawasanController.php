@@ -1126,16 +1126,16 @@ class ListPengawasanController extends Controller
         }
 
         $keterangan = DB::table('pengawas_kegiatan_keterangan')
-            ->join('keterangan_options', 'keterangan_options.id', '=', 'pengawas_kegiatan_keterangan.keterangan_option_id')
             ->where('pengawas_kegiatan_keterangan.pengawas_kegiatan_id', $act->id)
             ->select(
-                'keterangan_options.name as label',
+                'pengawas_kegiatan_keterangan.label',
                 'pengawas_kegiatan_keterangan.bukti_path',
                 'pengawas_kegiatan_keterangan.bukti_original_name',
                 'pengawas_kegiatan_keterangan.bukti_mime',
                 'pengawas_kegiatan_keterangan.bukti_size',
                 'pengawas_kegiatan_keterangan.bukti_uploaded_at'
             )
+            ->orderBy('pengawas_kegiatan_keterangan.id')
             ->get()
             ->map(function ($k) {
                 return [
@@ -1147,7 +1147,7 @@ class ListPengawasanController extends Controller
                         'size' => $k->bukti_size,
                         'uploaded_at' => $k->bukti_uploaded_at ? \Carbon\Carbon::parse($k->bukti_uploaded_at)->format('d-m-Y H:i') : null,
                         'url' => asset('storage/' . $k->bukti_path),
-                    ] : null
+                    ] : null,
                 ];
             })
             ->values()
@@ -1181,7 +1181,14 @@ class ListPengawasanController extends Controller
             ],
         ];
 
-        $options = DB::table('keterangan_options')->orderBy('name')->pluck('name')->toArray();
+        $options = DB::table('pengawas_kegiatan_keterangan')
+            ->where('pengawas_kegiatan_keterangan.pengawas_kegiatan_id', $act->id)
+            ->distinct()
+            ->orderBy('pengawas_kegiatan_keterangan.label')
+            ->pluck('pengawas_kegiatan_keterangan.label')
+            ->filter(fn($v) => $v !== null && $v !== '')
+            ->values()
+            ->toArray();
         $users = User::orderBy('name')->get(['id', 'name', 'email'])->toArray();
         $canWrite = $this->canWriteForModule($user);
         $lpPermissions = $this->getListPengawasanPermissions($user);
@@ -1339,31 +1346,39 @@ class ListPengawasanController extends Controller
             ->values();
 
         $permission = $this->getListPengawasanPermissions($user);
-        if (!$permission['tambah_keterangan'] && !$permission['edit_keterangan'] && $labels->isNotEmpty()) {
-            $existingOptionNames = DB::table('keterangan_options')
-                ->whereIn('name', $labels->all())
-                ->pluck('name')
-                ->all();
 
-            $unknown = $labels->reject(fn($l) => in_array($l, $existingOptionNames, true));
+        $existing = DB::table('pengawas_kegiatan_keterangan')
+            ->where('pengawas_kegiatan_id', $act->id)
+            ->select(
+                'id',
+                'label',
+                'bukti_path',
+                'bukti_original_name',
+                'bukti_mime',
+                'bukti_size',
+                'bukti_uploaded_at'
+            )
+            ->get();
+
+        $existingLabels = $existing
+            ->pluck('label')
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        if (!$permission['tambah_keterangan'] && $labels->isNotEmpty()) {
+            $unknown = $labels->reject(fn($l) => in_array($l, $existingLabels, true));
             if ($unknown->isNotEmpty()) {
                 return response()->json(['message' => 'Unauthorized action.'], 403);
             }
         }
-
-        $existing = DB::table('pengawas_kegiatan_keterangan')
-            ->join('keterangan_options', 'keterangan_options.id', '=', 'pengawas_kegiatan_keterangan.keterangan_option_id')
-            ->where('pengawas_kegiatan_id', $act->id)
-            ->select('pengawas_kegiatan_keterangan.*', 'keterangan_options.name')
-            ->get();
-
-        $existingLabels = $existing->pluck('name')->all();
         $newLabels = $labels->values()->all();
 
         // Delete removed
         $toDeleteLabels = array_diff($existingLabels, $newLabels);
         if (!empty($toDeleteLabels)) {
-            $toDeleteIds = $existing->whereIn('name', $toDeleteLabels)->pluck('id');
+            $toDeleteIds = $existing->whereIn('label', $toDeleteLabels)->pluck('id');
             foreach ($existing->whereIn('id', $toDeleteIds) as $row) {
                 if ($row->bukti_path) Storage::disk('public')->delete($row->bukti_path);
             }
@@ -1375,33 +1390,26 @@ class ListPengawasanController extends Controller
             if (in_array($label, $existingLabels, true)) {
                 continue;
             }
-            
-            $opt = DB::table('keterangan_options')->where('name', $label)->first();
-            if (!$opt) {
-                $optId = DB::table('keterangan_options')->insertGetId(['name' => $label, 'created_at' => now(), 'updated_at' => now()]);
-            } else {
-                $optId = $opt->id;
-            }
-            
+
             DB::table('pengawas_kegiatan_keterangan')->insert([
                 'pengawas_kegiatan_id' => $act->id,
-                'keterangan_option_id' => $optId,
+                'label' => $label,
                 'created_at' => now(),
                 'updated_at' => now()
             ]);
         }
 
         $finalList = DB::table('pengawas_kegiatan_keterangan')
-            ->join('keterangan_options', 'keterangan_options.id', '=', 'pengawas_kegiatan_keterangan.keterangan_option_id')
             ->where('pengawas_kegiatan_id', $act->id)
             ->select(
-                'keterangan_options.name as label',
+                'pengawas_kegiatan_keterangan.label',
                 'pengawas_kegiatan_keterangan.bukti_path',
                 'pengawas_kegiatan_keterangan.bukti_original_name',
                 'pengawas_kegiatan_keterangan.bukti_mime',
                 'pengawas_kegiatan_keterangan.bukti_size',
                 'pengawas_kegiatan_keterangan.bukti_uploaded_at'
             )
+            ->orderBy('pengawas_kegiatan_keterangan.id')
             ->get()
             ->map(function ($k) {
                 return [
@@ -1419,9 +1427,19 @@ class ListPengawasanController extends Controller
             ->values()
             ->toArray();
 
+        $options = DB::table('pengawas_kegiatan_keterangan')
+            ->where('pengawas_kegiatan_keterangan.pengawas_kegiatan_id', $act->id)
+            ->distinct()
+            ->orderBy('pengawas_kegiatan_keterangan.label')
+            ->pluck('pengawas_kegiatan_keterangan.label')
+            ->filter(fn($v) => $v !== null && $v !== '')
+            ->values()
+            ->toArray();
+
         return response()->json([
             'message' => 'Keterangan berhasil diperbarui',
             'keterangan' => $finalList,
+            'options' => $options,
         ]);
     }
 
@@ -1447,12 +1465,10 @@ class ListPengawasanController extends Controller
             'bukti' => ['required', 'file', 'max:5120', 'mimes:pdf,jpg,jpeg,png'],
         ]);
 
-        $opt = DB::table('keterangan_options')->where('name', $data['label'])->first();
-        if (!$opt) return response()->json(['message' => 'Label keterangan tidak ditemukan'], 404);
-
         $row = DB::table('pengawas_kegiatan_keterangan')
             ->where('pengawas_kegiatan_id', $act->id)
-            ->where('keterangan_option_id', $opt->id)
+            ->where('label', trim($data['label']))
+            ->orderByDesc('id')
             ->first();
 
         if (!$row) return response()->json(['message' => 'Keterangan tidak ditemukan pada kegiatan ini'], 404);
@@ -1505,12 +1521,10 @@ class ListPengawasanController extends Controller
 
         $data = $request->validate(['label' => ['required', 'string']]);
 
-        $opt = DB::table('keterangan_options')->where('name', $data['label'])->first();
-        if (!$opt) return response()->json(['message' => 'Label keterangan tidak ditemukan'], 404);
-
         $row = DB::table('pengawas_kegiatan_keterangan')
             ->where('pengawas_kegiatan_id', $act->id)
-            ->where('keterangan_option_id', $opt->id)
+            ->where('label', trim($data['label']))
+            ->orderByDesc('id')
             ->first();
 
         if (!$row) return response()->json(['message' => 'Keterangan tidak ditemukan pada kegiatan ini'], 404);

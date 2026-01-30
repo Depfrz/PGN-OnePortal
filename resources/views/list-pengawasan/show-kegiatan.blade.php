@@ -4,6 +4,7 @@
         lpPerms: {{ Js::from($lpPermissions ?? []) }},
         toast: { show: false, message: '', timeoutId: null },
         project: {{ Js::from($item) }},
+        kegiatanIndexUrl: {{ Js::from(route('list-pengawasan.kegiatan.index', $item['pengawas_id'])) }},
         editProject: { nama: {{ Js::from($item['nama'] ?? '') }}, deskripsi: {{ Js::from($item['deskripsi'] ?? '') }} },
         options: {{ Js::from($options ?? []) }},
         users: {{ Js::from($users ?? []) }},
@@ -231,6 +232,7 @@
                     const data = await response.json();
                     this.project.keterangan = data.keterangan || this.project.keterangan || [];
                     this.selectedKeterangan = (this.project.keterangan || []).map(k => k.label);
+                    if (data.options) this.options = data.options;
                 }
             } catch (e) {
                 console.error(e);
@@ -254,6 +256,7 @@
             }
 
             this.savingAll = true;
+            let allSaved = false;
             try {
                 if (canSaveDetail) {
                     const response = await fetch(`/list-pengawasan/kegiatan/${this.project.id}`, {
@@ -298,12 +301,16 @@
                     this.selectedKeterangan = (this.project.keterangan || []).map(k => k.label);
                 }
 
+                allSaved = true;
                 this.showToast('Perubahan berhasil disimpan');
             } catch (e) {
                 console.error(e);
                 this.showToast('Terjadi kesalahan sistem');
             } finally {
                 this.savingAll = false;
+                if (allSaved) {
+                    window.location.href = this.kegiatanIndexUrl;
+                }
             }
         },
         async uploadBukti(file) {
@@ -479,7 +486,7 @@
              this.keteranganOptionToDelete = this.selectedKeteranganOption;
              this.deleteKeteranganOptionModal = true;
         },
-        confirmDeleteKeteranganOption() {
+        async confirmDeleteKeteranganOption() {
              if (!this.canWrite || !this.lpPerms.edit_keterangan) return;
              const val = this.keteranganOptionToDelete;
              if (!val) return;
@@ -487,6 +494,7 @@
              this.options = this.options.filter(o => o !== val);
              this.selectedKeterangan = this.selectedKeterangan.filter(o => o !== val);
              this.project.keterangan = (this.project.keterangan || []).filter(k => k.label !== val);
+             await this.saveKeterangan();
              
              this.deleteKeteranganOptionModal = false;
              this.keteranganOptionToDelete = null;
