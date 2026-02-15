@@ -1,0 +1,1264 @@
+<x-dashboard-layout title="List Pengawasan" :can-write="$canWrite" :lp-permissions="$lpPermissions">
+    <div x-data="{
+        canWrite: {{ Js::from($canWrite ?? false) }},
+        lpPerms: {{ Js::from($lpPermissions ?? []) }},
+        init() {
+            window.addEventListener('storage', (e) => {
+                if (e.key !== 'list-pengawasan:pengawas-update') return;
+                if (!e.newValue) return;
+                try {
+                    const payload = JSON.parse(e.newValue);
+                    this.applyPengawasUpdate(payload);
+                } catch (err) {}
+            });
+
+            try {
+                if ('BroadcastChannel' in window) {
+                    const ch = new BroadcastChannel('list-pengawasan');
+                    ch.onmessage = (ev) => {
+                        const msg = ev?.data;
+                        if (!msg || msg.type !== 'pengawas-update') return;
+                        this.applyPengawasUpdate(msg.payload);
+                    };
+                    this._lpChannel = ch;
+                }
+            } catch (err) {}
+
+            try {
+                const last = localStorage.getItem('list-pengawasan:pengawas-update');
+                if (last) this.applyPengawasUpdate(JSON.parse(last));
+            } catch (err) {}
+
+            setTimeout(() => {
+                if (!this.selectedPengawas && (this.items || []).length > 0) {
+                    this.selectProject(this.items[0]);
+                }
+            }, 0);
+        },
+        applyPengawasUpdate(payload) {
+            const pengawasId = payload?.pengawas_id;
+            if (!pengawasId) return;
+            const item = (this.items || []).find(it => it.id === pengawasId);
+            if (!item) return;
+            item.pengawas_users = payload?.pengawas_users || [];
+        },
+        closeAllOverlays() {
+            this.closeAdd();
+            this.closeKeteranganMenu();
+            this.deleteModal = false;
+            this.deleteBuktiModal = false;
+            this.deleteKeteranganBuktiModal = false;
+            this.filterOpen = false;
+        },
+        search: '',
+        filterOpen: false,
+        filterStatus: '',
+        selectedIds: [],
+        bulkStatus: 'Belum Dikerjakan',
+        addModal: false,
+        deleteModal: false,
+        deleteBuktiModal: false,
+        deleteKeteranganBuktiModal: false,
+        errorModal: false,
+        errorMessage: '',
+        selectedPengawas: null,
+        selectedKeteranganBukti: { item: null, label: '' },
+        toast: { show: false, message: '', timeoutId: null },
+        dialog: { open: false, title: '', message: '', variant: 'info' },
+        confirm: { open: false, title: '', message: '', confirmText: 'Ya', confirmClass: 'bg-blue-600 hover:bg-blue-700', busy: false, onConfirm: null },
+        editingId: null,
+        editPengawas: { nama: '' },
+        keteranganMenu: { open: false, x: 0, y: 0, item: null },
+        newPengawas: { nama: '', pengawas_users: [] },
+        manageProjectModal: false,
+        manageProjectName: '',
+        manageProjectStatus: '',
+        selectedBuktiItem: null,
+        items: {{ Js::from($items) }},
+        options: {{ Js::from($options) }},
+        users: {{ Js::from($users ?? []) }},
+        broadcastSelected(item) {
+            try {
+                window.dispatchEvent(new CustomEvent('list-pengawasan:selected', { detail: { hasSelection: !!item } }));
+            } catch (e) {}
+        },
+        selectProject(item) {
+            this.selectedPengawas = item;
+            this.broadcastSelected(item);
+        },
+        openAdd() {
+            if (!this.canWrite || !this.lpPerms.tambah_proyek) return;
+            this.newPengawas = { nama: '', pengawas_users: [] };
+            this.addModal = true;
+            document.body.style.overflow = 'hidden';
+        },
+        closeAdd() {
+            this.addModal = false;
+            document.body.style.overflow = '';
+        },
+        showToast(message) {
+            this.toast.message = message;
+            this.toast.show = true;
+            if (this.toast.timeoutId) clearTimeout(this.toast.timeoutId);
+            this.toast.timeoutId = setTimeout(() => { this.toast.show = false; }, 2200);
+        },
+        openDialog(message, title = 'Informasi', variant = 'info') {
+            this.dialog = { open: true, title, message, variant };
+            document.body.style.overflow = 'hidden';
+        },
+        closeDialog() {
+            this.dialog.open = false;
+            document.body.style.overflow = '';
+        },
+        openConfirm({ title, message, confirmText = 'Ya', confirmClass = 'bg-blue-600 hover:bg-blue-700', onConfirm }) {
+            this.confirm = { open: true, title, message, confirmText, confirmClass, busy: false, onConfirm };
+            document.body.style.overflow = 'hidden';
+        },
+        closeConfirm() {
+            this.confirm.open = false;
+            this.confirm.busy = false;
+            this.confirm.onConfirm = null;
+            document.body.style.overflow = '';
+        },
+        async runConfirm() {
+            if (!this.confirm.open || this.confirm.busy || typeof this.confirm.onConfirm !== 'function') return;
+            this.confirm.busy = true;
+            try {
+                await this.confirm.onConfirm();
+            } finally {
+                this.confirm.busy = false;
+            }
+        },
+        statusBadgeClass(status) {
+            const map = {
+                'Belum Dikerjakan': 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
+                'Sedang Dikerjakan': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
+                'Selesai': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
+            };
+            return map[status] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+        },
+        toggleSelected(id) {
+            if (this.selectedIds.includes(id)) {
+                this.selectedIds = this.selectedIds.filter(v => v !== id);
+            } else {
+                this.selectedIds.push(id);
+            }
+        },
+        toggleSelectAll() {
+            const ids = (this.filteredItems || []).map(i => i.id);
+            const allSelected = ids.length > 0 && ids.every(id => this.selectedIds.includes(id));
+            this.selectedIds = allSelected ? [] : ids;
+        },
+        clearSelection() {
+            this.selectedIds = [];
+        },
+        get bulkAllSelected() {
+            const ids = (this.filteredItems || []).map(i => i.id);
+            return ids.length > 0 && ids.every(id => this.selectedIds.includes(id));
+        },
+        async bulkUpdateStatus() {
+            if (!this.canWrite || !this.lpPerms.bulk_proyek) return;
+            if (!this.bulkStatus || this.selectedIds.length === 0) return;
+
+            try {
+                const response = await fetch('/list-pengawasan/bulk-update', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
+                    },
+                    body: JSON.stringify({ ids: this.selectedIds, status: this.bulkStatus })
+                });
+                const d = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    this.openDialog(d.message || 'Gagal mengubah status bulk', 'Gagal', 'error');
+                    return;
+                }
+                this.items = this.items.map(i => this.selectedIds.includes(i.id) ? { ...i, status: this.bulkStatus } : i);
+                if (this.selectedPengawas && this.selectedIds.includes(this.selectedPengawas.id)) {
+                    this.selectedPengawas.status = this.bulkStatus;
+                }
+                this.showToast('Status proyek berhasil diperbarui');
+                this.clearSelection();
+            } catch (e) {
+                console.error(e);
+                this.openDialog('Terjadi kesalahan sistem', 'Gagal', 'error');
+            }
+        },
+        async bulkDelete() {
+            if (!this.canWrite || !this.lpPerms.bulk_proyek) return;
+            if (this.selectedIds.length === 0) return;
+            const ids = [...this.selectedIds];
+            this.openConfirm({
+                title: 'Hapus Proyek (Bulk)',
+                message: `Hapus ${ids.length} proyek terpilih? Tindakan ini tidak dapat dibatalkan.`,
+                confirmText: 'Ya, Hapus',
+                confirmClass: 'bg-red-600 hover:bg-red-700',
+                onConfirm: async () => {
+                    try {
+                        const response = await fetch('/list-pengawasan/bulk-delete', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
+                            },
+                            body: JSON.stringify({ ids })
+                        });
+                        const d = await response.json().catch(() => ({}));
+                        if (!response.ok) {
+                            this.openDialog(d.message || 'Gagal menghapus proyek bulk', 'Gagal', 'error');
+                            return;
+                        }
+                        this.items = this.items.filter(i => !ids.includes(i.id));
+                        if (this.selectedPengawas && ids.includes(this.selectedPengawas.id)) {
+                            this.selectedPengawas = null;
+                        }
+                        this.clearSelection();
+                        this.closeConfirm();
+                        this.showToast('Proyek berhasil dihapus');
+                    } catch (e) {
+                        console.error(e);
+                        this.openDialog('Terjadi kesalahan sistem', 'Gagal', 'error');
+                    }
+                }
+            });
+        },
+        openManageProject() {
+            if (!this.selectedPengawas || !this.canWrite || (!this.lpPerms.nama_proyek && !this.lpPerms.status_proyek)) return;
+            this.manageProjectName = this.selectedPengawas.nama || '';
+            this.manageProjectStatus = this.selectedPengawas.status || 'Belum Dikerjakan';
+            this.manageProjectModal = true;
+        },
+        closeManageProject() {
+            this.manageProjectModal = false;
+            this.manageProjectName = '';
+            this.manageProjectStatus = '';
+        },
+        async saveManageProject() {
+            if (!this.selectedPengawas || !this.canWrite || (!this.lpPerms.nama_proyek && !this.lpPerms.status_proyek)) return;
+            const payload = {};
+            if (this.lpPerms.nama_proyek) {
+                payload.nama = (this.manageProjectName || '').trim();
+                if (!payload.nama) {
+                    this.showToast('Nama proyek wajib diisi');
+                    return;
+                }
+            }
+            if (this.lpPerms.status_proyek) {
+                payload.status = this.manageProjectStatus || null;
+            }
+            if (Object.keys(payload).length === 0) return;
+            try {
+                const response = await fetch(`/list-pengawasan/${this.selectedPengawas.id}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
+                    },
+                    body: JSON.stringify(payload)
+                });
+                if (response.ok) {
+                    if (payload.nama) {
+                        this.items = this.items.map(i => i.id === this.selectedPengawas.id ? { ...i, nama: payload.nama } : i);
+                        this.selectedPengawas.nama = payload.nama;
+                    }
+                    if (payload.status) {
+                        this.items = this.items.map(i => i.id === this.selectedPengawas.id ? { ...i, status: payload.status || i.status } : i);
+                        this.selectedPengawas.status = payload.status;
+                    }
+                    this.closeManageProject();
+                    this.showToast('Nama proyek berhasil diperbarui');
+                } else {
+                    const d = await response.json().catch(() => ({}));
+                    this.showToast(d.message || 'Gagal memperbarui data');
+                }
+            } catch (e) {
+                console.error(e);
+                this.showToast('Terjadi kesalahan sistem');
+            }
+        },
+        async savePengawas() {
+            if (!this.canWrite || !this.lpPerms.tambah_proyek) return;
+            try {
+                const response = await fetch('/list-pengawasan', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
+                    },
+                    body: JSON.stringify({
+                        nama: this.newPengawas.nama,
+                        pengawas_users: this.newPengawas.pengawas_users
+                    })
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    this.items.push({
+                        id: data.id,
+                        nama: this.newPengawas.nama,
+                        created_at: new Date().toISOString(),
+                        tanggal: data.tanggal || '-',
+                        deadline: null,
+                        deadline_display: '-',
+                        status: data.status || 'Belum Dikerjakan',
+                        kegiatan_terbaru: [],
+                        pengawas_users: data.pengawas_users || [],
+                        bukti: { path: null, name: null, mime: null, size: null, uploaded_at: null, url: null }
+                    });
+                    this.closeAdd();
+                    this.showToast('Proyek berhasil ditambahkan');
+                } else {
+                    const d = await response.json().catch(() => ({}));
+                    if (response.status === 422 && d.message.includes('sudah ada')) {
+                        this.errorMessage = d.message;
+                        this.errorModal = true;
+                    } else {
+                        this.showToast(d.message || 'Gagal menambah proyek');
+                    }
+                }
+            } catch (e) {
+                console.error(e);
+                this.showToast('Terjadi kesalahan sistem');
+            }
+        },
+        openKeteranganMenu(e, item) {
+                    if (!this.canWrite) return;
+            this.selectedPengawas = item;
+            this.broadcastSelected(item);
+                    
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const menuWidth = 320; 
+                    const menuHeight = 300; 
+
+                    // Align right of button
+                    let x = rect.right - menuWidth;
+                    let y = rect.bottom + 4;
+
+                    if (x < 12) x = 12;
+                    const maxX = window.innerWidth - menuWidth - 12;
+                    if (x > maxX) x = maxX;
+
+                    const maxY = window.innerHeight - menuHeight - 12;
+                    if (y > maxY) y = rect.top - menuHeight - 8;
+                    if (y < 12) y = 12;
+
+                    this.keteranganMenu = { open: true, x, y, item };
+                    document.body.style.overflow = 'hidden'; 
+                },
+                closeKeteranganMenu() {
+                    this.keteranganMenu = { open: false, x: 0, y: 0, item: null };
+                    document.body.style.overflow = '';
+                },
+        startEdit(item) {
+            if (!this.canWrite || !this.lpPerms.nama_proyek) return;
+            this.editingId = item.id;
+            this.editPengawas = { nama: item.nama };
+        },
+        cancelEdit() {
+            this.editingId = null;
+            this.editPengawas = { nama: '' };
+        },
+        async saveEdit(item) {
+            if (!this.canWrite || !this.lpPerms.nama_proyek) return;
+            const payload = {
+                nama: this.editPengawas.nama?.trim() || ''
+            };
+
+            if (!payload.nama) {
+                alert('Nama proyek wajib diisi');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/list-pengawasan/${item.id}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
+                    },
+                    body: JSON.stringify(payload)
+                });
+                if (response.ok) {
+                    item.nama = payload.nama;
+                    this.cancelEdit();
+                    this.showToast('Nama proyek berhasil diperbarui');
+                } else {
+                    const d = await response.json().catch(() => ({}));
+                    alert(d.message || 'Gagal memperbarui data');
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Terjadi kesalahan sistem');
+            }
+        },
+        hasKeterangan(item, label) {
+            if (!item || !item.keterangan) return false;
+            return item.keterangan.some(k => k.label === label);
+        },
+        getKeteranganBukti(item, label) {
+            if (!item || !item.keterangan) return null;
+            const found = item.keterangan.find(k => k.label === label);
+            return found ? found.bukti : null;
+        },
+        async uploadKeteranganBukti(item, label, file) {
+            if (!this.canWrite || !this.lpPerms.bukti) return;
+            const formData = new FormData();
+            formData.append('label', label);
+            formData.append('bukti', file);
+            try {
+                const response = await fetch(`/list-pengawasan/${item.id}/keterangan/bukti`, {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
+                    body: formData
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    const idx = item.keterangan.findIndex(k => k.label === label);
+                    if (idx !== -1) {
+                        item.keterangan[idx].bukti = data.bukti;
+                    }
+                    this.showToast('Bukti keterangan berhasil diunggah');
+                } else {
+                    const d = await response.json().catch(() => ({}));
+                    alert(d.message || 'Gagal mengunggah bukti');
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Terjadi kesalahan sistem');
+            }
+        },
+        deleteKeteranganBukti(item, label) {
+            if (!this.canWrite || !this.lpPerms.bukti) return;
+            this.selectedKeteranganBukti = { item, label };
+            this.deleteKeteranganBuktiModal = true;
+        },
+        async confirmDeleteKeteranganBukti() {
+            const { item, label } = this.selectedKeteranganBukti;
+            if (!item || !label) return;
+            try {
+                const response = await fetch(`/list-pengawasan/${item.id}/keterangan/bukti`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
+                    },
+                    body: JSON.stringify({ label })
+                });
+                if (response.ok) {
+                    const idx = item.keterangan.findIndex(k => k.label === label);
+                    if (idx !== -1) {
+                        item.keterangan[idx].bukti = null;
+                    }
+                    this.showToast('Bukti keterangan berhasil dihapus');
+                    this.deleteKeteranganBuktiModal = false;
+                    this.selectedKeteranganBukti = { item: null, label: '' };
+                } else {
+                    alert('Gagal menghapus bukti');
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Terjadi kesalahan sistem');
+            }
+        },
+        onKeteranganBuktiChange(item, label, e) {
+            const file = e.target.files[0];
+            if (file) this.uploadKeteranganBukti(item, label, file);
+            e.target.value = '';
+        },
+        async toggleKeteranganFromTable(item, label) {
+            if (!this.canWrite || !this.lpPerms.bukti) return;
+            const currentLabels = (item.keterangan || []).map(k => k.label);
+            const exists = currentLabels.includes(label);
+            const nextLabels = exists ? currentLabels.filter(l => l !== label) : [...currentLabels, label];
+
+            const previous = JSON.parse(JSON.stringify(item.keterangan || []));
+
+            if (exists) {
+                 item.keterangan = item.keterangan.filter(k => k.label !== label);
+            } else {
+                 item.keterangan.push({ label: label, bukti: null });
+            }
+
+            try {
+                const response = await fetch(`/list-pengawasan/${item.id}/keterangan`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
+                    },
+                    body: JSON.stringify({ keterangan: nextLabels })
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    item.keterangan = data.keterangan;
+                    this.showToast('Keterangan diperbarui');
+                } else {
+                    item.keterangan = previous;
+                    const d = await response.json().catch(() => ({}));
+                    this.showToast(d.message || 'Gagal menyimpan keterangan');
+                }
+            } catch (e) {
+                console.error(e);
+                item.keterangan = previous;
+                this.showToast('Terjadi kesalahan sistem');
+            }
+        },
+        openDelete(item) {
+            if (!this.canWrite || !this.lpPerms.nama_proyek) return;
+            this.selectedPengawas = item;
+            this.broadcastSelected(item);
+            this.deleteModal = true;
+        },
+        async deletePengawas() {
+            if (!this.canWrite || !this.lpPerms.nama_proyek) return;
+            try {
+                const response = await fetch(`/list-pengawasan/${this.selectedPengawas.id}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
+                    }
+                });
+                if (response.ok) {
+                    this.items = this.items.filter(i => i.id !== this.selectedPengawas.id);
+                    this.deleteModal = false;
+                    this.showToast('Proyek berhasil dihapus');
+                } else {
+                    alert('Gagal menghapus proyek');
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Terjadi kesalahan sistem');
+            }
+        },
+        formatSize(bytes) {
+            if (!bytes && bytes !== 0) return '';
+            const units = ['B', 'KB', 'MB', 'GB'];
+            let v = bytes;
+            let idx = 0;
+            while (v >= 1024 && idx < units.length - 1) {
+                v /= 1024;
+                idx++;
+            }
+            return `${v.toFixed(idx === 0 ? 0 : 1)} ${units[idx]}`;
+        },
+        isImage(mime) {
+            return !!mime && mime.startsWith('image/');
+        },
+        triggerUpload(item) {
+            if (!this.canWrite || !this.lpPerms.bukti) return;
+            const el = document.getElementById(`bukti-input-${item.id}`);
+            if (el) el.click();
+        },
+        get filteredItems() {
+            let data = this.items.slice();
+
+            if (this.search) {
+                const q = this.search.toLowerCase();
+                data = data.filter(i => i.nama.toLowerCase().includes(q));
+            }
+
+            if (this.lpPerms.status_proyek && this.filterStatus) {
+                data = data.filter(i => (i.status || 'Belum Dikerjakan') === this.filterStatus);
+            }
+
+            return data;
+        },
+        async uploadBukti(item, file) {
+            if (!this.canWrite || !this.lpPerms.bukti) return;
+            try {
+                const formData = new FormData();
+                formData.append('bukti', file);
+                const response = await fetch(`/list-pengawasan/${item.id}/bukti`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
+                    },
+                    body: formData
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    item.bukti = data.bukti;
+                    this.showToast('Bukti berhasil diunggah');
+                } else {
+                    const d = await response.json().catch(() => ({}));
+                    alert(d.message || 'Gagal mengunggah bukti');
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Terjadi kesalahan sistem');
+            }
+        },
+        onBuktiChange(item, e) {
+            if (!this.canWrite || !this.lpPerms.bukti) return;
+            const file = e?.target?.files?.[0];
+            if (!file) return;
+            this.uploadBukti(item, file);
+            e.target.value = '';
+        },
+        openDeleteBukti(item) {
+            if (!this.canWrite || !this.lpPerms.bukti) return;
+            this.selectedBuktiItem = item;
+            this.deleteBuktiModal = true;
+        },
+        async confirmDeleteBukti() {
+            if (!this.canWrite || !this.lpPerms.bukti) return;
+            const item = this.selectedBuktiItem;
+            if (!item) return;
+            try {
+                const response = await fetch(`/list-pengawasan/${item.id}/bukti`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
+                    }
+                });
+                if (response.ok) {
+                    item.bukti = { path: null, name: null, mime: null, size: null, uploaded_at: null, url: null };
+                    this.deleteBuktiModal = false;
+                    this.selectedBuktiItem = null;
+                    this.showToast('Bukti berhasil dihapus');
+                } else {
+                    const d = await response.json().catch(() => ({}));
+                    alert(d.message || 'Gagal menghapus bukti');
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Terjadi kesalahan sistem');
+            }
+        },
+    }" class="p-4 sm:p-6">
+        <div x-effect="if (addModal) { closeKeteranganMenu(); }"></div>
+        <template x-teleport="body">
+            <div x-show="toast.show"
+                 x-transition:enter="transition ease-out duration-200"
+                 x-transition:enter-start="opacity-0 translate-y-2"
+                 x-transition:enter-end="opacity-100 translate-y-0"
+                 x-transition:leave="transition ease-in duration-150"
+                 x-transition:leave-start="opacity-100 translate-y-0"
+                 x-transition:leave-end="opacity-0 translate-y-2"
+                 class="fixed top-5 right-5 z-[10000]"
+                 style="display: none;">
+                <div class="flex items-center gap-3 rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-2xl px-4 py-3">
+                    <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-200">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-5 w-5">
+                            <path fill-rule="evenodd" d="M16.704 4.294a.75.75 0 01.002 1.06l-8.25 8.25a.75.75 0 01-1.06 0l-3.75-3.75a.75.75 0 011.06-1.06l3.22 3.22 7.72-7.72a.75.75 0 011.058 0z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    <div class="text-sm font-semibold text-gray-900 dark:text-gray-100" x-text="toast.message"></div>
+                </div>
+            </div>
+        </template>
+
+        <template x-teleport="body">
+            <div x-show="dialog.open"
+                 x-transition
+                 class="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+                 style="display: none;">
+                <div class="bg-white rounded-2xl p-6 w-[92vw] max-w-md shadow-2xl dark:bg-gray-800 border border-gray-100 dark:border-gray-700 max-h-[85vh] overflow-y-auto">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <div class="text-lg font-bold text-gray-900 dark:text-white" x-text="dialog.title"></div>
+                            <div class="mt-1 text-sm text-gray-600 dark:text-gray-300 whitespace-pre-line" x-text="dialog.message"></div>
+                        </div>
+                        <button @click="closeDialog()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+                    </div>
+                    <div class="mt-6 flex justify-end">
+                        <button @click="closeDialog()" class="px-4 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700">OK</button>
+                    </div>
+                </div>
+            </div>
+        </template>
+
+        <template x-teleport="body">
+            <div x-show="confirm.open"
+                 x-transition
+                 class="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+                 style="display: none;">
+                <div class="bg-white rounded-2xl p-6 w-[92vw] max-w-md shadow-2xl dark:bg-gray-800 border border-gray-100 dark:border-gray-700 max-h-[85vh] overflow-y-auto">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <div class="text-lg font-bold text-gray-900 dark:text-white" x-text="confirm.title"></div>
+                            <div class="mt-1 text-sm text-gray-600 dark:text-gray-300 whitespace-pre-line" x-text="confirm.message"></div>
+                        </div>
+                        <button @click="closeConfirm()" :disabled="confirm.busy" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+                    </div>
+                    <div class="mt-6 flex justify-end gap-2">
+                        <button @click="closeConfirm()" :disabled="confirm.busy" class="px-4 py-2.5 rounded-lg bg-white border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed">Batal</button>
+                        <button @click="runConfirm()" :disabled="confirm.busy" class="px-4 py-2.5 rounded-lg text-white text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed" :class="confirm.confirmClass">
+                            <span x-show="!confirm.busy" x-text="confirm.confirmText"></span>
+                            <span x-show="confirm.busy">Memproses...</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </template>
+
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
+            <h2 class="text-xl font-bold text-gray-800 dark:text-white">List Proyek</h2>
+            <div class="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center justify-end gap-3">
+                <div class="flex items-center gap-2 w-full sm:w-auto">
+                    <div class="relative w-full sm:w-[340px]">
+                        <input x-model="search" type="text" placeholder="Cari Proyek..." class="w-full bg-[#f7f8f9] border border-[#d6d9de] rounded-2xl pl-6 pr-12 py-3 text-base text-gray-800 placeholder:text-[#6f7a86] shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 dark:placeholder:text-gray-400">
+                        <div class="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 text-[#6f7a86] dark:text-gray-400">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35m0 0A7.5 7.5 0 1 0 6.3 6.3a7.5 7.5 0 0 0 10.35 10.35Z" />
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="relative flex-shrink-0" x-show="lpPerms.status_proyek" @click.outside="filterOpen = false" style="display: none;">
+                        <button type="button" @click="filterOpen = !filterOpen" class="relative inline-flex items-center justify-center w-12 h-12 bg-white text-gray-700 border border-gray-300 rounded-2xl hover:bg-gray-50 transition-all shadow-sm dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-.293.707L12 11.414V16a1 1 0 01-1.447.894l-2-1A1 1 0 018 15V11.414L3.293 6.707A1 1 0 013 6V4z" />
+                            </svg>
+                            <span x-show="filterStatus" class="absolute -top-1 -right-1 inline-flex h-3 w-3 rounded-full bg-blue-600"></span>
+                        </button>
+                        <div x-show="filterOpen" x-transition class="absolute right-0 mt-2 w-56 rounded-xl border border-gray-200 bg-white shadow-lg z-50 dark:bg-gray-800 dark:border-gray-700" style="display: none;">
+                            <div class="px-3 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400">Filter Status</div>
+                            <div class="py-1">
+                                <button type="button" @click="filterStatus = ''; filterOpen = false" class="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700" :class="!filterStatus ? 'font-semibold text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-200'">Semua</button>
+                                <button type="button" @click="filterStatus = 'Belum Dikerjakan'; filterOpen = false" class="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700" :class="filterStatus === 'Belum Dikerjakan' ? 'font-semibold text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-200'">Belum Dikerjakan</button>
+                                <button type="button" @click="filterStatus = 'Sedang Dikerjakan'; filterOpen = false" class="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700" :class="filterStatus === 'Sedang Dikerjakan' ? 'font-semibold text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-200'">Sedang Dikerjakan</button>
+                                <button type="button" @click="filterStatus = 'Selesai'; filterOpen = false" class="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700" :class="filterStatus === 'Selesai' ? 'font-semibold text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-200'">Selesai</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <button x-show="selectedPengawas && canWrite && (lpPerms.nama_proyek || lpPerms.status_proyek)" @click="openManageProject()" class="hidden sm:inline-flex w-full sm:w-auto bg-white text-gray-700 border border-gray-300 font-medium text-sm py-2.5 px-4 rounded-lg hover:bg-gray-50 transition-all shadow-sm hover:shadow items-center justify-center dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                    </svg>
+                    Edit
+                </button>
+                <button x-show="selectedPengawas && canWrite && lpPerms.nama_proyek" @click="openDelete(selectedPengawas)" class="hidden sm:inline-flex w-full sm:w-auto bg-white text-red-600 border border-red-200 font-medium text-sm py-2.5 px-4 rounded-lg hover:bg-red-50 transition-all shadow-sm hover:shadow items-center justify-center dark:bg-gray-800 dark:border-red-900/30 dark:text-red-400 dark:hover:bg-red-900/20">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                    </svg>
+                    Hapus
+                </button>
+                <button x-show="canWrite && lpPerms.tambah_proyek" :disabled="!canWrite || !lpPerms.tambah_proyek" @click="openAdd()" class="w-full sm:w-auto bg-blue-600 text-white font-medium text-sm py-2.5 px-6 rounded-lg hover:bg-blue-700 transition-all shadow-md hover:shadow-lg inline-flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+                    </svg>
+                    Tambah Proyek
+                </button>
+            </div>
+        </div>
+
+        <div x-show="selectedIds.length > 0 && canWrite && lpPerms.bulk_proyek" class="mb-4 rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between dark:border-blue-900/40 dark:bg-blue-900/20" style="display: none;">
+            <div class="text-sm font-semibold text-blue-800 dark:text-blue-200">
+                <span x-text="selectedIds.length"></span> proyek dipilih
+            </div>
+            <div class="flex flex-col sm:flex-row gap-2 sm:items-center w-full sm:w-auto">
+                <button type="button" @click="clearSelection()" class="w-full sm:w-auto px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-700">Batal</button>
+                <select x-model="bulkStatus" class="w-full sm:w-auto bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100">
+                    <option value="Belum Dikerjakan">Belum Dikerjakan</option>
+                    <option value="Sedang Dikerjakan">Sedang Dikerjakan</option>
+                    <option value="Selesai">Selesai</option>
+                </select>
+                <button type="button" @click="bulkUpdateStatus()" class="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">Ubah Status</button>
+                <button type="button" @click="bulkDelete()" class="w-full sm:w-auto px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium">Hapus</button>
+            </div>
+        </div>
+
+        <div class="bg-gray-50 dark:bg-gray-900 rounded-xl p-4 sm:p-6 sm:overflow-x-auto border border-gray-100 dark:border-gray-700">
+            <template x-if="items.length === 0">
+                <div class="py-14">
+                    <div class="mx-auto max-w-md text-center">
+                        <div class="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-300">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="h-8 w-8">
+                                <path fill-rule="evenodd" d="M7.5 6A4.5 4.5 0 0 1 12 1.5 4.5 4.5 0 0 1 16.5 6v.75h.75A3.75 3.75 0 0 1 21 10.5v7.5A3.75 3.75 0 0 1 17.25 21.75H6.75A3.75 3.75 0 0 1 3 18v-7.5A3.75 3.75 0 0 1 6.75 6.75h.75V6Zm7.5.75V6A3 3 0 0 0 12 3a3 3 0 0 0-3 3v.75h6Z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                        <div class="text-base font-semibold text-gray-900 dark:text-gray-100">Belum ada proyek.</div>
+                        <div class="mt-1 text-sm text-gray-600 dark:text-gray-400">Klik nama proyek untuk melihat detail.</div>
+                    </div>
+                </div>
+            </template>
+
+            <template x-if="items.length > 0">
+                <div>
+                    <div class="space-y-3 sm:hidden">
+                        <template x-for="(item, index) in filteredItems" :key="'mobile-' + item.id">
+                            <div 
+                                class="rounded-2xl border shadow-sm cursor-pointer transition-all duration-200"
+                                :class="selectedPengawas && selectedPengawas.id === item.id ? 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800 ring-1 ring-blue-300 dark:ring-blue-700' : 'bg-white border-gray-200 dark:bg-gray-800 dark:border-gray-700'"
+                                @click="selectProject(item)"
+                            >
+                                <div class="p-4">
+                                    <div class="flex items-start justify-between gap-3">
+                                        <div class="min-w-0 flex-1">
+                                            <template x-if="editingId === item.id">
+                                                <input x-model="editPengawas.nama" type="text" class="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-sm font-semibold text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100" />
+                                            </template>
+                                            <template x-if="editingId !== item.id">
+                                                <a :href="'/list-pengawasan/' + item.id + '/kegiatan'" class="text-gray-900 font-semibold text-base dark:text-white truncate hover:underline block mb-1" x-text="item.nama"></a>
+                                            </template>
+                                            <div class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mb-3">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" />
+                                                </svg>
+                                                <span x-text="item.tanggal"></span>
+                                                <span x-show="lpPerms.status_proyek" class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold" :class="statusBadgeClass(item.status)" x-text="item.status || '-'" style="display: none;"></span>
+                                                <span class="text-gray-300 dark:text-gray-600">•</span>
+                                                <span class="font-semibold text-gray-600 dark:text-gray-300">No <span x-text="index + 1"></span></span>
+                                            </div>
+                                            
+                                            <div class="mb-3">
+                                                <div class="text-[10px] font-bold tracking-wider text-gray-400 uppercase dark:text-gray-500 mb-1">Pengawas</div>
+                                                <div class="space-y-1">
+                                                    <template x-if="!item.pengawas_users || item.pengawas_users.length === 0">
+                                                        <div class="text-sm text-gray-500 dark:text-gray-400 italic">-</div>
+                                                    </template>
+                                                    <template x-for="u in item.pengawas_users" :key="`mobile-pengawas-${item.id}-${u.id}`">
+                                                        <div class="flex items-center gap-2">
+                                                            <div class="w-5 h-5 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-[10px] font-bold text-gray-600 dark:text-gray-300">
+                                                                <span x-text="u.name.charAt(0)"></span>
+                                                            </div>
+                                                            <div class="min-w-0 flex-1">
+                                                                <div class="text-sm font-medium text-gray-700 dark:text-gray-200 truncate" x-text="u.name"></div>
+                                                            </div>
+                                                        </div>
+                                                    </template>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="flex items-center gap-1 flex-shrink-0">
+                                            <input x-show="canWrite && lpPerms.bulk_proyek" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800" @click.stop="toggleSelected(item.id)" :checked="selectedIds.includes(item.id)" style="display: none;">
+                                            <button x-show="canWrite && (lpPerms.nama_proyek || lpPerms.status_proyek)" @click.stop="selectedPengawas = item; openManageProject()" class="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors dark:hover:bg-blue-900/20 dark:hover:text-blue-400" style="display: none;">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                                                </svg>
+                                            </button>
+                                            <button x-show="canWrite && lpPerms.nama_proyek" @click.stop="openDelete(item)" class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors dark:hover:bg-red-900/20 dark:hover:text-red-400" style="display: none;">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                <div class="mt-4">
+                                    <div class="text-[11px] font-semibold tracking-wider text-gray-500 uppercase dark:text-gray-400">Kegiatan</div>
+                                    <div class="mt-2 w-full rounded-xl border border-gray-200 bg-gray-50 p-3 text-left transition-colors dark:border-gray-700 dark:bg-gray-900">
+                                        <template x-if="!item.kegiatan_terbaru || item.kegiatan_terbaru.length === 0">
+                                            <span class="text-sm font-medium text-gray-500 dark:text-gray-400">-</span>
+                                        </template>
+                                        <template x-if="item.kegiatan_terbaru && item.kegiatan_terbaru.length > 0">
+                                            <div class="flex flex-wrap gap-2">
+                                                <template x-for="(k, idx) in item.kegiatan_terbaru.slice(0, 3)" :key="k.id + '-' + idx">
+                                                    <span class="inline-flex items-center rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-semibold text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200" x-text="k.nama"></span>
+                                                </template>
+                                                <template x-if="item.kegiatan_terbaru.length > 3">
+                                                    <span class="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 border border-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-900/40" x-text="'+' + (item.kegiatan_terbaru.length - 3)"></span>
+                                                </template>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+
+                                <!-- Bukti column removed for mobile view -->
+                            </div>
+                        </template>
+                    </div>
+
+                    <div class="hidden sm:block">
+                        <table class="w-full border-separate border-spacing-y-3">
+                            <thead>
+                                <tr class="text-left">
+                                    <th class="pb-2 font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider pl-4 w-12 text-center">
+                                        <input type="checkbox" x-show="canWrite && lpPerms.bulk_proyek" :disabled="!canWrite || !lpPerms.bulk_proyek" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed" @click.stop="toggleSelectAll()" :checked="bulkAllSelected" style="display: none;">
+                                    </th>
+                                    <th class="pb-2 font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider pl-4 w-14 text-center">No</th>
+                                    <th class="pb-2 font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nama Proyek</th>
+                                    <th class="pb-2 font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[180px] pr-4">Pengawas</th>
+                                    <th class="pb-2 font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[130px] pr-4">Tanggal Mulai</th>
+                                    <th x-show="lpPerms.status_proyek" class="pb-2 font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[160px] pr-4" style="display: none;">Status</th>
+                                    <th class="pb-2 font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[220px] pr-4">Kegiatan</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template x-for="(item, index) in filteredItems" :key="item.id">
+                                    <tr 
+                                        class="rounded-lg shadow-sm hover:shadow-md transition-all duration-200 group cursor-pointer" 
+                                        :class="selectedPengawas && selectedPengawas.id === item.id ? 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800 ring-1 ring-blue-300 dark:ring-blue-700' : 'bg-white dark:bg-gray-800'"
+                                        @click="selectProject(item)"
+                                    >
+                                <td class="p-4 rounded-l-lg border-y border-l border-gray-200 dark:border-gray-700 group-hover:border-blue-300 dark:group-hover:border-blue-700 transition-colors w-12 text-center">
+                                    <input type="checkbox" x-show="canWrite && lpPerms.bulk_proyek" :disabled="!canWrite || !lpPerms.bulk_proyek" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed" @click.stop="toggleSelected(item.id)" :checked="selectedIds.includes(item.id)" style="display: none;">
+                                </td>
+                                <td class="p-4 border-y border-gray-200 dark:border-gray-700 group-hover:border-blue-300 dark:group-hover:border-blue-700 transition-colors w-14 text-center text-sm font-bold text-gray-700 dark:text-gray-200" x-text="index + 1"></td>
+                                <td class="p-4 border-y border-gray-200 dark:border-gray-700 group-hover:border-blue-300 dark:group-hover:border-blue-700 transition-colors">
+                                    <div class="flex items-start justify-between gap-3">
+                                        <div class="min-w-0 flex-1">
+                                            <template x-if="editingId === item.id">
+                                                <input x-model="editPengawas.nama" type="text" class="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-sm font-semibold text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100" />
+                                            </template>
+                                            <template x-if="editingId !== item.id">
+                                                <a :href="'/list-pengawasan/' + item.id + '/kegiatan'" class="text-gray-900 font-semibold text-base dark:text-white truncate hover:underline" x-text="item.nama"></a>
+                                            </template>
+                                        </div>
+
+                                        <div class="flex items-center gap-1 flex-shrink-0"></div>
+                                    </div>
+                                </td>
+
+                                <td class="p-4 border-y border-gray-200 dark:border-gray-700 group-hover:border-blue-300 dark:group-hover:border-blue-700 transition-colors">
+                                    <div class="space-y-2">
+                                        <template x-if="!item.pengawas_users || item.pengawas_users.length === 0">
+                                            <div class="text-sm text-gray-500 dark:text-gray-400">-</div>
+                                        </template>
+                                        <template x-for="u in item.pengawas_users" :key="`pengawas-${item.id}-${u.id}`">
+                                            <div class="min-w-0">
+                                                <div class="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate" x-text="u.name"></div>
+                                                <div class="text-xs text-gray-500 dark:text-gray-400" x-text="u.email"></div>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </td>
+
+                                <td class="p-4 text-sm text-gray-700 dark:text-gray-300 border-y border-gray-200 dark:border-gray-700 group-hover:border-blue-300 dark:group-hover:border-blue-700 transition-colors" x-text="item.tanggal"></td>
+
+                                <td x-show="lpPerms.status_proyek" class="p-4 border-y border-gray-200 dark:border-gray-700 group-hover:border-blue-300 dark:group-hover:border-blue-700 transition-colors" style="display: none;">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium" :class="statusBadgeClass(item.status)" x-text="item.status || '-'"></span>
+                                </td>
+
+                                <td class="p-4 rounded-r-lg border-y border-r border-gray-200 dark:border-gray-700 group-hover:border-blue-300 dark:group-hover:border-blue-700 transition-colors">
+                                    <div class="w-full rounded-2xl border border-blue-100 bg-blue-50 px-4 py-2.5 text-left text-sm text-blue-700 flex items-start justify-between gap-3 dark:border-blue-900/40 dark:bg-blue-900/20 dark:text-blue-200">
+                                        <div class="flex-1 min-w-0">
+                                            <span class="block text-[11px] font-semibold uppercase tracking-wide text-blue-500/80 mb-0.5">Kegiatan</span>
+                                            <template x-if="!item.kegiatan_terbaru || item.kegiatan_terbaru.length === 0">
+                                                <span class="block text-xs sm:text-sm font-medium whitespace-normal leading-snug">-</span>
+                                            </template>
+                                            <template x-if="item.kegiatan_terbaru && item.kegiatan_terbaru.length > 0">
+                                                <div class="flex flex-wrap gap-2">
+                                                    <template x-for="(k, idx) in item.kegiatan_terbaru.slice(0, 3)" :key="k.id + '-' + idx">
+                                                        <span class="inline-flex items-center rounded-full border border-blue-200 bg-white px-3 py-1 text-[11px] font-semibold text-blue-700 dark:border-blue-900/50 dark:bg-gray-900 dark:text-blue-200" x-text="k.nama"></span>
+                                                    </template>
+                                                    <template x-if="item.kegiatan_terbaru.length > 3">
+                                                        <span class="inline-flex items-center rounded-full bg-blue-100 px-3 py-1 text-[11px] font-semibold text-blue-800 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-200 dark:border-blue-900/40" x-text="'+' + (item.kegiatan_terbaru.length - 3)"></span>
+                                                    </template>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </template>
+        </div>
+
+        <template x-teleport="body">
+            <div
+                x-show="keteranganMenu.open"
+                x-transition:enter="transition ease-out duration-150"
+                x-transition:enter-start="opacity-0"
+                x-transition:enter-end="opacity-100"
+                x-transition:leave="transition ease-in duration-100"
+                x-transition:leave-start="opacity-100"
+                x-transition:leave-end="opacity-0"
+                class="fixed inset-0 z-[9999]"
+                style="display: none;"
+            >
+                <div class="absolute inset-0" @click="closeKeteranganMenu()"></div>
+                <div
+                    class="fixed w-72 sm:w-80 rounded-xl border border-gray-100 bg-white shadow-xl ring-1 ring-black/5 dark:border-gray-700 dark:bg-gray-800"
+                    :style="`left:${keteranganMenu.x}px; top:${keteranganMenu.y}px;`"
+                >
+                    <div class="max-h-64 overflow-y-auto py-2">
+                        <template x-for="opt in options" :key="'opt-menu-' + (keteranganMenu.item?.id || 0) + '-' + opt">
+                            <div class="flex items-center justify-between px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 group">
+                                <button
+                                    type="button"
+                                    class="flex-1 text-left text-xs sm:text-sm"
+                                    @click="toggleKeteranganFromTable(keteranganMenu.item, opt)"
+                                    :disabled="!canWrite || !lpPerms.bukti"
+                                >
+                                    <div
+                                        class="flex items-center gap-3 rounded-lg border border-transparent px-1 py-0.5"
+                                        :class="hasKeterangan(keteranganMenu.item, opt)
+                                            ? 'bg-blue-50 border-blue-100 dark:bg-blue-900/20 dark:border-blue-900/40'
+                                            : ''"
+                                    >
+                                        <div
+                                            class="h-5 w-5 rounded-md flex items-center justify-center flex-shrink-0"
+                                            :class="hasKeterangan(keteranganMenu.item, opt)
+                                                ? 'bg-blue-600 text-white'
+                                                : 'bg-white border border-gray-300 text-transparent dark:bg-gray-800 dark:border-gray-600'"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-3.5 w-3.5">
+                                                <path fill-rule="evenodd" d="M16.704 4.294a.75.75 0 01.002 1.06l-8.25 8.25a.75.75 0 01-1.06 0l-3.75-3.75a.75.75 0 011.06-1.06l3.22 3.22 7.72-7.72a.75.75 0 011.058 0z" clip-rule="evenodd" />
+                                            </svg>
+                                        </div>
+                                        <span class="truncate text-gray-800 dark:text-gray-100" x-text="opt"></span>
+                                    </div>
+                                </button>
+
+                                <template x-if="hasKeterangan(keteranganMenu.item, opt)">
+                                    <div class="flex items-center gap-1 ml-2">
+                                        <template x-if="!getKeteranganBukti(keteranganMenu.item, opt)">
+                                            <label class="cursor-pointer p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Upload Bukti Keterangan">
+                                                <input type="file" class="hidden" @change="onKeteranganBuktiChange(keteranganMenu.item, opt, $event)" accept="image/png,image/jpeg,application/pdf">
+                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4">
+                                                    <path fill-rule="evenodd" d="M11.47 2.47a.75.75 0 011.06 0l4.5 4.5a.75.75 0 01-1.06 1.06l-3.22-3.22V16.5a.75.75 0 01-1.5 0V4.81L8.03 8.03a.75.75 0 01-1.06-1.06l4.5-4.5zM3 15.75a.75.75 0 01.75.75v2.25a1.5 1.5 0 001.5 1.5h13.5a1.5 1.5 0 001.5-1.5V16.5a.75.75 0 011.5 0v2.25a3 3 0 01-3 3H5.25a3 3 0 01-3-3V16.5a.75.75 0 01.75-.75z" clip-rule="evenodd" />
+                                                </svg>
+                                            </label>
+                                        </template>
+                                        <template x-if="getKeteranganBukti(keteranganMenu.item, opt)">
+                                            <div class="flex items-center gap-1">
+                                                <a :href="getKeteranganBukti(keteranganMenu.item, opt).url" target="_blank" class="p-1.5 text-green-600 hover:bg-green-50 rounded-lg transition-colors" title="Lihat Bukti">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4">
+                                                        <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" />
+                                                        <path fill-rule="evenodd" d="M1.323 11.447C2.811 6.976 7.028 3.75 12.001 3.75c4.97 0 9.185 3.223 10.675 7.69.12.362.12.752 0 1.113-1.487 4.471-5.705 7.697-10.677 7.697-4.97 0-9.186-3.223-10.675-7.69a1.766 1.766 0 010-1.113zM17.25 12a5.25 5.25 0 11-10.5 0 5.25 5.25 0 0110.5 0z" clip-rule="evenodd" />
+                                                    </svg>
+                                                </a>
+                                                <button @click="deleteKeteranganBukti(keteranganMenu.item, opt)" class="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Hapus Bukti">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4">
+                                                        <path fill-rule="evenodd" d="M16.5 4.478v.227a48.816 48.816 0 013.878.512.75.75 0 11-.49 1.478 47.429 47.429 0 00-3.89-.514V13.5a1.5 1.5 0 01-3 0V6.18c-1.316.12-2.614.28-3.89.514a.75.75 0 11-.49-1.478 48.83 48.83 0 013.878-.512V4.478a.75.75 0 01.75-.75h1.5a.75.75 0 01.75.75z" clip-rule="evenodd" />
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+                    </div>
+                    <div class="border-t border-gray-100 dark:border-gray-700 px-3 py-2 flex justify-end" x-show="canWrite && (lpPerms.bukti || lpPerms.tambah_keterangan || lpPerms.edit_keterangan)">
+                        <button
+                            type="button"
+                            class="text-[11px] font-medium text-blue-600 hover:text-blue-700 hover:underline dark:text-blue-300 dark:hover:text-blue-200"
+                            @click="redirectToProjectKeterangan('edit_keterangan')"
+                        >
+                            Edit keterangan
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </template>
+
+        <!-- Error Modal -->
+        <div x-show="errorModal" class="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm" style="display: none;" x-transition>
+            <div class="bg-white rounded-xl p-6 w-[92vw] max-w-sm shadow-2xl dark:bg-gray-800 border-2 border-red-100 dark:border-red-900/50">
+                <div class="text-center">
+                    <div class="mx-auto flex items-center justify-center h-14 w-14 rounded-full bg-red-100 dark:bg-red-900/30 mb-4">
+                        <svg class="h-8 w-8 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Duplikasi Data!</h3>
+                    <p class="text-sm text-gray-600 dark:text-gray-300 mb-6" x-text="errorMessage"></p>
+                    <button @click="errorModal = false" class="w-full px-4 py-2.5 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 focus:outline-none focus:ring-4 focus:ring-red-300 dark:focus:ring-red-800 transition-colors">
+                        Mengerti
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <template x-teleport="body">
+            <div x-show="addModal" 
+                 x-transition:enter="transition ease-out duration-300"
+                 x-transition:enter-start="translate-x-full"
+                 x-transition:enter-end="translate-x-0"
+                 x-transition:leave="transition ease-in duration-200"
+                 x-transition:leave-start="translate-x-0"
+                 x-transition:leave-end="translate-x-full"
+                 class="fixed inset-y-0 right-0 z-[9999] w-full max-w-md bg-white dark:bg-gray-800 shadow-2xl overflow-y-auto border-l border-gray-200 dark:border-gray-700" 
+                 style="display: none;">
+                <div class="p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-bold text-gray-800 dark:text-white">Tambah Proyek</h2>
+                    <button @click="closeAdd()" class="text-gray-400 hover:text-gray-600 transition-colors dark:hover:text-gray-200">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-200">Nama Proyek</label>
+                        <input x-model="newPengawas.nama" type="text" placeholder="Masukkan nama proyek" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder:text-gray-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-200">Pengawas</label>
+                        <div class="flex flex-wrap gap-2 mb-3">
+                            <template x-if="newPengawas.pengawas_users.length === 0">
+                                <span class="text-sm text-gray-500 dark:text-gray-400">Belum ada pengawas dipilih</span>
+                            </template>
+                            <template x-for="u in users" :key="`selected-user-${u.id}`">
+                                <template x-if="newPengawas.pengawas_users.includes(u.id)">
+                                    <span class="inline-flex items-center rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-semibold text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200" x-text="u.email"></span>
+                                </template>
+                            </template>
+                        </div>
+                        <div class="grid grid-cols-1 gap-3 max-h-48 overflow-y-auto pr-1">
+                            <template x-for="u in users" :key="`select-user-${u.id}`">
+                                <label class="flex items-center gap-3 p-3 border border-gray-200 rounded-lg shadow-sm cursor-pointer hover:bg-blue-50 hover:border-blue-200 transition-colors dark:border-gray-700 dark:hover:bg-blue-900/20 dark:hover:border-blue-800">
+                                    <input type="checkbox" :value="u.id" x-model="newPengawas.pengawas_users" class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                                    <div class="min-w-0">
+                                        <div class="text-sm font-medium text-gray-700 dark:text-gray-200 truncate" x-text="u.name"></div>
+                                        <div class="text-xs text-gray-500 dark:text-gray-400 truncate" x-text="u.email"></div>
+                                    </div>
+                                </label>
+                            </template>
+                        </div>
+                    </div>
+                    <div class="flex justify-end space-x-3 mt-8 pt-4 border-t border-gray-100 dark:border-gray-700">
+                        <button @click="closeAdd()" class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Batal</button>
+                        <button @click="savePengawas()" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-md hover:shadow-lg transition-all">Simpan</button>
+                    </div>
+                </div>
+            </div>
+            </div>
+        </template>
+
+        <!-- Backdrop for Sidebar -->
+        <template x-teleport="body">
+            <div x-show="addModal" 
+                 x-transition:enter="transition ease-out duration-300"
+                 x-transition:enter-start="opacity-0"
+                 x-transition:enter-end="opacity-100"
+                 x-transition:leave="transition ease-in duration-200"
+                 x-transition:leave-start="opacity-100"
+                 x-transition:leave-end="opacity-0"
+                 @click="closeAdd()"
+                 class="fixed inset-0 z-[9998] bg-black/50 backdrop-blur-sm"
+                 style="display: none;">
+            </div>
+        </template>
+
+        <!-- Delete Modal -->
+        <div x-show="deleteModal" class="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm transition-opacity" style="display: none;">
+            <div class="bg-white rounded-xl p-5 sm:p-6 w-[92vw] max-w-[480px] shadow-2xl transform transition-all dark:bg-gray-800">
+                <div class="flex items-center space-x-4 mb-6">
+                    <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 dark:bg-red-900/30">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold text-gray-800 dark:text-white">Hapus Proyek</h2>
+                        <p class="text-sm text-gray-500 mt-1 dark:text-gray-400">Tindakan ini tidak dapat dibatalkan.</p>
+                    </div>
+                </div>
+                <div class="space-y-5">
+                    <p class="text-sm text-gray-600 dark:text-gray-300">Apakah Anda yakin ingin menghapus proyek berikut?</p>
+                    <div class="bg-red-50 border border-red-100 rounded-lg p-4 dark:bg-red-900/20 dark:border-red-900/40">
+                        <div class="font-semibold text-gray-900 dark:text-white" x-text="selectedPengawas?.nama"></div>
+                        <div class="text-sm text-gray-500 dark:text-gray-400" x-text="selectedPengawas?.tanggal"></div>
+                    </div>
+                    <div class="flex justify-end space-x-3 mt-6">
+                        <button @click="deleteModal = false" class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Batal</button>
+                        <button @click="deletePengawas()" class="px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium shadow-md hover:shadow-lg transition-all">Ya, Hapus</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div x-show="manageProjectModal" class="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm transition-opacity" style="display: none;">
+            <div class="bg-white rounded-xl p-5 sm:p-6 w-[92vw] max-w-[480px] shadow-2xl transform transition-all dark:bg-gray-800">
+                <div class="flex items-center justify-between mb-6">
+                    <div>
+                        <h2 class="text-xl font-bold text-gray-800 dark:text-white">Kelola Proyek</h2>
+                        <p class="text-sm text-gray-500 mt-1 dark:text-gray-400" x-text="selectedPengawas ? selectedPengawas.nama : '-'"></p>
+                    </div>
+                    <button @click="closeManageProject()" class="text-gray-400 hover:text-gray-600 transition-colors dark:hover:text-gray-200">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="space-y-5">
+                    <div x-show="lpPerms.nama_proyek" style="display: none;">
+                        <label class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-200">Nama Proyek</label>
+                        <input x-model="manageProjectName" type="text" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder:text-gray-500">
+                    </div>
+                    <div x-show="lpPerms.status_proyek" style="display: none;">
+                        <label class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-200">Status</label>
+                        <select x-model="manageProjectStatus" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100">
+                            <option value="Belum Dikerjakan">Belum Dikerjakan</option>
+                            <option value="Sedang Dikerjakan">Sedang Dikerjakan</option>
+                            <option value="Selesai">Selesai</option>
+                        </select>
+                    </div>
+                    <div class="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-gray-700">
+                        <button x-show="lpPerms.nama_proyek" @click="closeManageProject(); openDelete(selectedPengawas)" class="px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium transition-colors" style="display: none;">Hapus Proyek</button>
+                        <div class="flex items-center space-x-3">
+                            <button @click="closeManageProject()" class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Batal</button>
+                            <button @click="saveManageProject()" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-md hover:shadow-lg transition-all">Simpan</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div x-show="deleteBuktiModal" class="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm transition-opacity" style="display: none;">
+            <div class="bg-white rounded-xl p-5 sm:p-6 w-[92vw] max-w-[480px] shadow-2xl transform transition-all dark:bg-gray-800">
+                <div class="flex items-center space-x-4 mb-6">
+                    <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 dark:bg-red-900/30">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-600 dark:text-red-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold text-gray-800 dark:text-white">Hapus Bukti</h2>
+                        <p class="text-sm text-gray-500 mt-1 dark:text-gray-400">File bukti akan dihapus dari sistem.</p>
+                    </div>
+                </div>
+                <div class="space-y-5">
+                    <p class="text-sm text-gray-600 dark:text-gray-300">Apakah Anda yakin ingin menghapus bukti untuk proyek ini?</p>
+                    <div class="bg-red-50 border border-red-100 rounded-lg p-4 dark:bg-red-900/20 dark:border-red-900/40">
+                        <div class="font-semibold text-gray-900 dark:text-white" x-text="selectedBuktiItem?.nama"></div>
+                        <div class="text-sm text-gray-500 dark:text-gray-400" x-text="selectedBuktiItem?.bukti?.name"></div>
+                    </div>
+                    <div class="flex justify-end space-x-3 mt-6">
+                        <button @click="deleteBuktiModal = false; selectedBuktiItem = null" class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Batal</button>
+                        <button @click="confirmDeleteBukti()" class="px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium shadow-md hover:shadow-lg transition-all">Ya, Hapus</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div x-show="deleteKeteranganBuktiModal" class="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm transition-opacity" style="display: none;">
+            <div class="bg-white rounded-xl p-5 sm:p-6 w-[92vw] max-w-[480px] shadow-2xl transform transition-all dark:bg-gray-800">
+                <div class="flex items-center space-x-4 mb-6">
+                    <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 dark:bg-red-900/30">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-600 dark:text-red-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold text-gray-800 dark:text-white">Hapus Bukti Keterangan</h2>
+                        <p class="text-sm text-gray-500 mt-1 dark:text-gray-400">File bukti akan dihapus dari sistem.</p>
+                    </div>
+                </div>
+                <div class="space-y-5">
+                    <p class="text-sm text-gray-600 dark:text-gray-300">Apakah Anda yakin ingin menghapus bukti untuk keterangan berikut?</p>
+                    <div class="bg-red-50 border border-red-100 rounded-lg p-4 dark:bg-red-900/20 dark:border-red-900/40">
+                        <div class="font-semibold text-gray-900 dark:text-white" x-text="selectedKeteranganBukti?.label"></div>
+                        <div class="text-sm text-gray-500 dark:text-gray-400" x-text="selectedKeteranganBukti?.item?.nama"></div>
+                    </div>
+                    <div class="flex justify-end space-x-3 mt-6">
+                        <button @click="deleteKeteranganBuktiModal = false; selectedKeteranganBukti = { item: null, label: '' }" class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Batal</button>
+                        <button @click="confirmDeleteKeteranganBukti()" class="px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium shadow-md hover:shadow-lg transition-all">Ya, Hapus</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</x-dashboard-layout>

@@ -1,0 +1,6 @@
+[
+    {"id": 1, "title": "Panduan Inspeksi Pipa", "description": "Cara melakukan pemeriksaan rutin pada pipa gas.", "tags": "inspeksi, pipa, maintenance"},
+    {"id": 2, "title": "Instruksi Kerja Welder", "description": "Standar operasional prosedur untuk pengelasan.", "tags": "welder, sop, las"},
+    {"id": 3, "title": "Laporan Tahunan 2023", "description": "Rekapitulasi kegiatan tahun 2023.", "tags": "laporan, tahunan"},
+    {"id": 4, "title": "Kebijakan K3", "description": "Aturan keselamatan dan kesehatan kerja.", "tags": "k3, safety, aturan"}
+]

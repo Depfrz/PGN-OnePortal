@@ -1,0 +1,347 @@
+* {
+  box-sizing: border-box;
+}
+
+.supervisorMengklikPr {
+  position: relative;
+  width: 1920px;
+  height: 1080px;
+
+  .berandaProfilAkun {
+    margin: 9px 0px 0px;
+    line-height: 29px;
+    letter-spacing: 0;
+    color: #000000;
+    font-family: Inter, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif;
+    font-size: 24px;
+    font-weight: 700;
+  }
+
+  .rectangle18 {
+    display: flex;
+    position: absolute;
+    top: 0;
+    left: 0;
+    flex-direction: column;
+    align-items: flex-start;
+    background: #d9d9d9;
+    padding-bottom: 12px;
+    padding-left: 302px;
+    width: 1920px;
+    height: 1080px;
+
+    .rectangle6 {
+      display: flex;
+      align-items: flex-start;
+      align-self: stretch;
+      margin-right: 4px;
+      background: #ffffff;
+      padding: 39px 67px 51px 58px;
+
+      .vector {
+        margin-left: 1037px;
+        width: 38px;
+        height: 44px;
+      }
+
+      .autoWrapper {
+        position: relative;
+        margin-top: 7px;
+        margin-left: 18px;
+        width: 135px;
+        height: 25px;
+
+        .group {
+          position: absolute;
+          right: -41px;
+          bottom: -13px;
+          width: 46px;
+          height: 46px;
+        }
+
+        .supervisor {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 135px;
+          height: 25px;
+          letter-spacing: 0;
+          color: #000000;
+          font-family: Inter, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif;
+          font-size: 24px;
+        }
+      }
+    }
+
+    .group11 {
+      display: flex;
+      align-items: center;
+      align-self: stretch;
+      margin-left: 10px;
+      padding: 10px;
+
+      .rectangle16 {
+        display: flex;
+        flex-direction: column;
+        flex-grow: 1;
+        align-items: flex-start;
+        border-radius: 10px;
+        background: #ffffff;
+        padding: 43px 275px 100px 38px;
+
+        .ahmadFalihAgussalim {
+          opacity: 0.5;
+          width: 302px;
+          height: 50px;
+          letter-spacing: 0;
+          color: #000000;
+          font-family: Inter, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif;
+          font-size: 24px;
+        }
+
+        .profilAkun {
+          width: 286px;
+          height: 44px;
+          letter-spacing: 0;
+          color: #000000;
+          font-family: Inter, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif;
+          font-size: 36px;
+          font-weight: 600;
+        }
+
+        .nama {
+          margin: 67px 0px 0px 15px;
+          line-height: 29px;
+          letter-spacing: 0;
+          color: #000000;
+          font-family: Inter, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif;
+          font-size: 24px;
+          font-weight: 700;
+        }
+
+        .rectangle10 {
+          display: flex;
+          align-items: flex-start;
+          align-self: stretch;
+          margin: 6px 1px 0px 15px;
+          border: 1px solid #000000;
+          border-radius: 15px;
+          background: #ffffff;
+          padding: 32px 939px 17px 16px;
+        }
+
+        .instansi {
+          margin: 33px 0px 0px 16px;
+          line-height: 29px;
+          letter-spacing: 0;
+          color: #000000;
+          font-family: Inter, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif;
+          font-size: 24px;
+          font-weight: 700;
+        }
+
+        .rectangle19 {
+          display: flex;
+          align-items: flex-start;
+          align-self: stretch;
+          margin-top: 6px;
+          margin-left: 16px;
+          border: 1px solid #000000;
+          border-radius: 15px;
+          background: #ffffff;
+          padding: 32px 940px 17px 15px;
+        }
+
+        .jabatan {
+          margin: 33px 0px 0px 15px;
+          line-height: 29px;
+          letter-spacing: 0;
+          color: #000000;
+          font-family: Inter, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif;
+          font-size: 24px;
+          font-weight: 700;
+        }
+
+        .rectangle20 {
+          display: flex;
+          align-items: flex-start;
+          align-self: stretch;
+          margin: 6px 1px 0px 15px;
+          padding: 34px 940px 17px 17px;
+          background-image: url(../image/mkmaknyp-zalln0k.svg);
+          background-position: center;
+          background-size: cover;
+          background-repeat: no-repeat;
+        }
+
+        .role {
+          margin: 50px 0px 0px 15px;
+          line-height: 29px;
+          letter-spacing: 0;
+          color: #000000;
+          font-family: Inter, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif;
+          font-size: 24px;
+          font-weight: 700;
+        }
+
+        .rectangle21 {
+          display: flex;
+          align-items: flex-start;
+          align-self: stretch;
+          margin: 6px 1px 0px 15px;
+          padding: 35px 940px 16px 17px;
+          background-image: url(../image/mkmaknyp-zalln0k.svg);
+          background-position: center;
+          background-size: cover;
+          background-repeat: no-repeat;
+        }
+      }
+    }
+  }
+
+  .rectangle13 {
+    display: flex;
+    position: absolute;
+    top: 0;
+    left: -6px;
+    flex-direction: column;
+    align-items: flex-start;
+    border-radius: 5px;
+    background: #439df1;
+    padding: 37px 11px 704px 31px;
+    width: 308px;
+    height: 1080px;
+
+    .logoPertaminaGasNega {
+      margin-left: 29px;
+      width: 200px;
+      height: 60px;
+    }
+
+    .autoWrapper2 {
+      display: flex;
+      align-items: center;
+      align-self: stretch;
+      justify-content: space-between;
+      margin-top: 45px;
+      padding-right: 100px;
+      padding-left: 0;
+
+      .lineMdHomeTwotone {
+        position: relative;
+        width: 50px;
+        height: 50px;
+        overflow: hidden;
+
+        .vector2 {
+          position: absolute;
+          top: 6px;
+          left: 10px;
+          width: 29px;
+          height: 38px;
+        }
+
+        .group2 {
+          position: absolute;
+          top: 4px;
+          left: 4px;
+          width: 42px;
+          height: 41px;
+        }
+
+        .materialSymbolsHomeR {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 50px;
+          height: 50px;
+          overflow: hidden;
+        }
+      }
+
+      .beranda {
+        line-height: 29px;
+        letter-spacing: 0;
+        color: #000000;
+        font-family: Inter, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif;
+        font-size: 24px;
+        font-weight: 700;
+      }
+    }
+
+    .autoWrapper3 {
+      display: flex;
+      align-items: flex-start;
+      align-self: stretch;
+      justify-content: space-between;
+      margin-top: 45px;
+      padding-right: 105px;
+      padding-left: 6px;
+
+      .vector3 {
+        width: 38px;
+        height: 38px;
+      }
+    }
+
+    .autoWrapper4 {
+      display: flex;
+      align-items: center;
+      align-self: stretch;
+      justify-content: space-between;
+      margin-top: 43px;
+      padding-right: 0;
+      padding-left: 10px;
+
+      .vector5 {
+        display: flex;
+        align-items: center;
+        background-image: url(../image/mkmaknyp-35xywoz.svg);
+        background-position: center;
+        background-size: cover;
+        background-repeat: no-repeat;
+
+        .vector4 {
+          width: 46px;
+          height: 46px;
+        }
+      }
+
+      .integrasiSistem {
+        width: 180px;
+        letter-spacing: 0;
+        color: #000000;
+        font-family: Inter, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif;
+        font-size: 24px;
+        font-weight: 700;
+      }
+    }
+  }
+
+  .beranda2 {
+    position: absolute;
+    top: 153px;
+    left: 93px;
+    width: 98px;
+    height: 29px;
+    line-height: 29px;
+    letter-spacing: 0;
+    color: #000000;
+    font-family: Inter, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif;
+    font-size: 24px;
+    font-weight: 700;
+  }
+
+  .integrasiSistem2 {
+    position: absolute;
+    top: 318px;
+    left: 111px;
+    width: 180px;
+    height: 58px;
+    letter-spacing: 0;
+    color: #000000;
+    font-family: Inter, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif;
+    font-size: 24px;
+    font-weight: 700;
+  }
+}

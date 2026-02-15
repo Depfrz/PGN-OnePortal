@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+    <defs>
+        <style>
+            .blue { fill: #005596; }
+            .green { fill: #75c043; }
+            .red { fill: #e52321; }
+        </style>
+    </defs>
+    <!-- Blue Shape (Left Vertical) -->
+    <path class="blue" d="M110 400 L110 112 C110 85 132 63 159 63 L208 63 C235 63 257 85 257 112 L257 265 L159 449 C132 449 110 427 110 400 Z" transform="translate(-40, 0)"/>
+    
+    <!-- Green Shape (Top Right) -->
+    <path class="green" d="M240 112 C240 85 262 63 289 63 L413 63 C440 63 462 85 462 112 L462 194 C462 221 440 243 413 243 L289 243 L240 112 Z"/>
+    
+    <!-- Red Shape (Bottom Right) -->
+    <path class="red" d="M289 270 L413 270 C440 270 462 292 462 319 L462 400 C462 427 440 449 413 449 L289 449 C262 449 240 427 240 400 L240 319 L289 270 Z"/>
+</svg>
